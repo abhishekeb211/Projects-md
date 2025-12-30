@@ -608,4 +608,586 @@ Raw logs are stored as referenced blobs, not dumped into events
 
 ---
 
+## Tool-Backed Forensics Layer (Complete Module Details)
+
+### O) Environment & Tool Orchestrator
+
+#### Purpose
+
+Standardize execution and normalize failures
+
+#### Responsibilities
+
+**Tool profiles**:
+
+- `kali_profile`: openssl, tshark, radare2, hashcat, etc.
+- `rhel_profile`: OpenSSL 3 + system crypto policies + PQC provider
+
+**Standardized invocation**:
+
+- isolated workspace paths
+- bounded output
+- timeouts
+
+**Normalized error taxonomy**:
+
+- parse failures
+- decode failures
+- tool failures
+- timeouts
+
+**Provenance capture**:
+
+- tool versions
+- command args
+- env flags
+
+#### Built-in fixes
+
+- Enforce per-artifact temp dir via tool env variables
+- Enforce "no network" unless explicitly enabled (security posture)
+
+---
+
+## Built-In Discipline Majors (Production Fixes You Must Ship)
+
+### A) Determinism Contract
+
+Every event includes:
+
+- `run_id`, `artifact_id`, `artifact_seq`, `event_seq`
+
+Seeds derived deterministically from:
+
+- artifact hash + run config hash (or toolchain hash for generation)
+
+Single writer ensures stable output ordering
+
+### B) Resource Governance
+
+Separate budgets:
+
+- artifact workers (throughput)
+- heavy pool (governor)
+
+Hard timeouts everywhere
+
+Bounded candidate splits and probe budgets
+
+### C) Failure Semantics
+
+Failures are data, not exceptions:
+
+- tool errors are emitted as normalized events
+- parse failure kinds are features
+
+No silent failures:
+
+- every tool invocation yields an event
+
+### D) Isolation Rules
+
+- Per-artifact workspace and tool env isolation mandatory
+- No shared temp dirs
+- No network by default
+- Raw logs stored separately and referenced, not dumped inline
+
+### E) Caching Rules (Make scaling affordable)
+
+Cache expensive steps by immutable hashes:
+
+- binary hash → RE results
+- artifact hash → CLI parsing results (optional)
+- PQC generation templates → batch outputs
+
+Cache invalidation keyed on toolchain hash
+
+---
+
+## Scaling to an Industry Product
+
+### Phase 1: Single machine, production discipline
+
+- Artifact parallel workers + heavy pool + single writer
+- Object storage for blobs + JSONL/Parquet for events/features
+- Works for thousands to tens of thousands artifacts per run
+
+### Phase 2: Distributed execution (no architecture change)
+
+- Scheduler backed by queue (Kafka/SQS)
+- Artifact workers deployed horizontally (Kubernetes)
+- Heavy pool becomes a dedicated service tier (scarce resource)
+- Telemetry writer becomes log service (or writes to event store)
+
+### Phase 3: Multi-tenant productization
+
+- tenancy boundaries in registry and telemetry
+- rate limits, quotas, priority queues
+- audit logging and permission gating
+- model versioning + evidence replay for compliance
+
+---
+
+## Storage Layout (Product-Ready)
+
+```
+manifests/
+  run_manifest.json
+  tool_inventory.json
+
+artifacts/
+  blobs/ (immutable object storage)
+
+telemetry/
+  tool_run_events.jsonl
+  module_events/
+    router.jsonl
+    cli_inspection.jsonl
+    normalization.jsonl
+    probes.jsonl
+    re_fingerprint.jsonl
+    math_workbench.jsonl
+    pqc.jsonl
+    hashes.jsonl
+
+features/
+  features.parquet
+  feature_schema.json
+
+models/
+  model_registry/
+
+reports/
+  report_artifacts/
+```
+
+---
+
+## Corrected Feasibility Summary (No Wishcasting)
+
+### Straightforward and solid
+
+- artifact-parallel execution
+- single-writer deterministic telemetry
+- tool inventory + manifest capture
+- CLI inspection + hash classification
+- routing + normalization + probes with budgets
+
+### Feasible with strict discipline (still doable)
+
+- deep RE (Ghidra): must be gated, cached, throttled
+- math workbench: must be bounded and rare
+- PQC dataset expansion: must be batch, deterministic, version-pinned
+
+### What breaks in real life (and how this design prevents it)
+
+- **nondeterministic logs** → single writer + seq fields
+- **tool collisions** → per-artifact workspace + env isolation
+- **runaway heavy workloads** → heavy pool caps + strict timeouts
+- **silent failures** → normalized error events always emitted
+- **cost blowups** → caching keyed by hashes + toolchain hash
+
+---
+
+**Bottom line**: This is feasible to implement and credible as an industry product if you ship the discipline majors (determinism, isolation, governance, failure-as-data, caching). Without those, it's a demo that works until someone touches it, which is basically every demo ever made.
+
+---
+
 **That's Forensics Mode implemented as an actual build plan: what comes in, what runs, what gets emitted, what's forbidden, and how it stays reproducible.**
+
+---
+
+## Implementation To-Do List
+
+### Phase 0: Foundation & Infrastructure
+
+- [ ] **Storage Layer Setup**
+  - [ ] Design and implement object storage backend for immutable artifacts
+  - [ ] Create blob storage with content-addressable references
+  - [ ] Set up JSONL/Parquet storage for telemetry events
+  - [ ] Implement storage layout structure (manifests/, artifacts/, telemetry/, features/, models/, reports/)
+
+- [ ] **Core Data Models**
+  - [ ] Define artifact registry schema (artifact_id, artifact_hash, metadata)
+  - [ ] Define run manifest schema (run_id, policies, tool inventory, job list)
+  - [ ] Define evidence event schema (event types, sequences, timestamps)
+  - [ ] Define feature table schema
+
+### Phase 1: Control Plane
+
+- [ ] **Run Controller**
+  - [ ] Implement run_id generation
+  - [ ] Build tool inventory capture (scan environment, capture versions/paths)
+  - [ ] Implement OS profile detection (Kali/RHEL, container digests)
+  - [ ] Create run policy configuration system
+  - [ ] Implement deterministic seeding rules (artifact hash + config hash)
+  - [ ] Build telemetry service initialization
+  - [ ] Generate and persist run_manifest.json
+  - [ ] Generate and persist tool_inventory.json
+
+- [ ] **Artifact Registry & Ingestion**
+  - [ ] Build API endpoint for artifact upload (REST/gRPC)
+  - [ ] Build CLI for artifact submission
+  - [ ] Build batch upload handler
+  - [ ] Implement artifact_hash computation (SHA256 content hash)
+  - [ ] Implement artifact_id generation (UUID)
+  - [ ] Build metadata capture and validation
+  - [ ] Implement registry persistence layer
+  - [ ] Add permissions/ACL/tenant scope handling
+  - [ ] Implement chain-of-custody logging
+
+- [ ] **Artifact Job Scheduler**
+  - [ ] Design job queue data structure
+  - [ ] Implement artifact_seq assignment (deterministic ordering)
+  - [ ] Build job metadata creation
+  - [ ] Implement job class routing (light-only vs heavy-eligible)
+  - [ ] Build backpressure controls (max in-flight limit)
+  - [ ] Implement priority queue (interactive vs batch)
+  - [ ] Prepare for queue backend integration (Kafka/SQS/Celery placeholder)
+
+- [ ] **Worker Pool Management**
+  - [ ] Implement artifact worker pool (throughput tier)
+  - [ ] Implement heavy worker pool (governor tier)
+  - [ ] Build worker health monitoring
+  - [ ] Implement concurrency caps per pool
+  - [ ] Build worker process isolation
+  - [ ] Implement graceful shutdown handlers
+
+- [ ] **Deterministic Telemetry Pipeline**
+  - [ ] Implement single-writer event consumer
+  - [ ] Build event sequencing logic (artifact_seq + event_seq)
+  - [ ] Implement normalized timestamp generation
+  - [ ] Build event persistence to JSONL/structured store
+  - [ ] Implement raw log blob storage with references
+  - [ ] Create event replay capabilities
+  - [ ] Build telemetry query interface
+
+### Phase 2: Tool-Backed Forensics Layer
+
+- [ ] **Environment & Tool Orchestrator**
+  - [ ] Define tool profiles (Kali, RHEL)
+  - [ ] Build tool inventory scanner (OpenSSL, tshark, radare2, hashcat, etc.)
+  - [ ] Implement per-artifact workspace isolation
+  - [ ] Build tool invocation wrapper (standardized execution)
+  - [ ] Implement timeout enforcement per tool
+  - [ ] Build bounded output capture (stdout/stderr limits)
+  - [ ] Implement normalized error taxonomy
+  - [ ] Build tool provenance capture (version, args, env)
+  - [ ] Implement "no network" enforcement
+  - [ ] Add sandbox/containerization support
+
+- [ ] **Artifact Job Setup**
+  - [ ] Implement isolated workspace creation per artifact
+  - [ ] Build deterministic seed derivation context
+  - [ ] Implement fixed locale/formatting environment
+  - [ ] Build safety posture application (network disable, privilege limits)
+  - [ ] Emit "job start" evidence event
+
+- [ ] **Artifact Type Router (Module)**
+  - [ ] Implement magic bytes / file signature detection
+  - [ ] Build MIME type detection
+  - [ ] Create multi-label classification logic
+  - [ ] Define type labels (SYM_CIPHERTEXT, KEM_TRANSCRIPT, SIGNATURE, HYBRID_BLOB, etc.)
+  - [ ] Implement fail-closed routing rules
+  - [ ] Build confidence scoring
+  - [ ] Emit routing evidence events with signals
+  - [ ] Implement unknown classification path
+
+- [ ] **CLI Inspection Module**
+  - [ ] Build PEM/DER format detection
+  - [ ] Implement ASN.1 structure parsing
+  - [ ] Add key/cert container identification
+  - [ ] Implement TLS record structure detection
+  - [ ] Build PCAP structure hints
+  - [ ] Create "failure shapes" taxonomy (tag mismatch, truncation, etc.)
+  - [ ] Implement strict timeouts
+  - [ ] Emit wrapper evidence events
+  - [ ] Emit normalized error events
+
+- [ ] **Normalizer / Candidate Parser Module**
+  - [ ] Implement prefix/suffix stability analysis
+  - [ ] Build header/footer pattern detection
+  - [ ] Create candidate split generation
+  - [ ] Implement offset/length computation for regions
+  - [ ] Build candidate scoring heuristics (deterministic)
+  - [ ] Implement hard cap on candidate count
+  - [ ] Build deterministic pruning logic
+  - [ ] Emit candidate generation events
+  - [ ] Emit budget cap hit events
+
+- [ ] **Type-Specific Probes Module**
+  - [ ] **Symmetric Ciphertext Probes**
+    - [ ] Implement length/overhead pattern analysis
+    - [ ] Build block alignment checks (mod 8/16)
+    - [ ] Implement repetition pattern detection (ECB suspicion)
+    - [ ] Build entropy statistics (stable computation)
+    - [ ] Implement controlled tamper checks (policy-gated)
+  - [ ] **PQC Probes**
+    - [ ] Build fixed-length geometry fingerprinting
+    - [ ] Implement SPKI/cert field parsing
+    - [ ] Build verify/decaps behavior checks (policy-gated)
+  - [ ] **Hybrid Probes**
+    - [ ] Implement split scoring improvements
+    - [ ] Run symmetric probes on AEAD-like regions
+    - [ ] Run PQC probes on KEM-like regions
+  - [ ] **Hash/KDF Probes (Audit-Only)**
+    - [ ] Implement format detection (bcrypt, scrypt, argon2, etc.)
+    - [ ] Build parameter extraction (salt length, iterations, memory cost)
+    - [ ] Implement misconfiguration classification
+    - [ ] Enforce no-recovery guarantees
+  - [ ] Implement per-probe timeouts
+  - [ ] Build per-artifact probe budgets
+  - [ ] Implement top-K candidate limiting
+  - [ ] Emit probe evidence events
+  - [ ] Emit skipped events with reasons
+
+- [ ] **Implementation Fingerprinting Module**
+  - [ ] **Light Fingerprinting (inline)**
+    - [ ] Build string/import extraction
+    - [ ] Implement symbol presence detection
+    - [ ] Add library linkage analysis
+    - [ ] Extract build IDs and metadata
+    - [ ] Build shallow API usage signatures
+    - [ ] Emit fingerprint candidate events
+  - [ ] **Deep Fingerprinting (heavy pool)**
+    - [ ] Integrate Ghidra/radare2 for deep analysis
+    - [ ] Implement trigger condition evaluation
+    - [ ] Build gating decision logic
+    - [ ] Implement caching by binary hash + toolchain hash
+    - [ ] Add strict timeouts
+    - [ ] Enforce heavy pool concurrency caps
+    - [ ] Emit deep analysis events
+    - [ ] Emit gating decision evidence
+
+- [ ] **Heavy Escalation Module**
+  - [ ] Build trigger policy evaluation
+  - [ ] Implement math/cryptanalysis workbench integration (Sage/PARI)
+  - [ ] Add deep reverse engineering workflows
+  - [ ] Implement intensive protocol analysis
+  - [ ] Build PQC batch validation
+  - [ ] Enforce strict resource limits (time/memory/CPU)
+  - [ ] Implement bounded runtime controls
+  - [ ] Build result caching by hash
+  - [ ] Emit structured metric events only (no essays)
+
+- [ ] **Module Execution Orchestrator**
+  - [ ] Implement deterministic module ordering
+  - [ ] Build sequential execution within artifact job
+  - [ ] Add bounded "quick-parallel" support for independent checks
+  - [ ] Emit module start/end events
+  - [ ] Emit completion summary event per artifact
+  - [ ] Handle module skips with evidence
+  - [ ] Handle module failures as data
+
+### Phase 3: PQC Toolchain Integration
+
+- [ ] **PQC Validation**
+  - [ ] Integrate liboqs for KEM operations
+  - [ ] Implement signature verification
+  - [ ] Build decapsulation workflows
+  - [ ] Add SPKI/DER key parsing
+  - [ ] Emit validation evidence events
+
+- [ ] **PQC Dataset Expansion (Heavy Pool)**
+  - [ ] Build KEM artifact generation
+  - [ ] Build signature artifact generation
+  - [ ] Implement hybrid construction generation
+  - [ ] Add wrapper realism variants (core bytes, DER/SPKI, TLS-ish)
+  - [ ] Implement deterministic seed derivation for generation
+  - [ ] Add toolchain version pinning enforcement
+  - [ ] Emit generation events with provenance
+
+### Phase 4: Evidence → Features → Models
+
+- [ ] **Feature Builder**
+  - [ ] Implement streaming feature builder (real-time)
+  - [ ] Implement batch feature builder (replay from evidence)
+  - [ ] Build wrapper evidence feature extraction
+  - [ ] Build implementation fingerprint feature extraction
+  - [ ] Build probe result feature extraction
+  - [ ] Build math metrics feature extraction
+  - [ ] Build PQC geometry feature extraction
+  - [ ] Build hash/KDF parameter features
+  - [ ] Ensure streaming and batch produce identical results
+  - [ ] Persist features to Parquet
+
+- [ ] **Tiered Models**
+  - [ ] Build Tier 0: artifact type confirmation model
+  - [ ] Build Tier 1: family classification per type
+  - [ ] Build Tier 2: parameter set/mode classification
+  - [ ] Build Tier 3: deployment/wrapper pattern model (optional)
+  - [ ] Implement OOS (out-of-sample) detection
+  - [ ] Build model versioning system
+  - [ ] Store model outputs as evidence events
+  - [ ] Build model registry
+
+- [ ] **Reporting Layer**
+  - [ ] Design report templates
+  - [ ] Build evidence trace visualization
+  - [ ] Implement wrapper vs core vs fingerprint breakdown
+  - [ ] Add toolchain manifest references
+  - [ ] Show failure events and confidence drops
+  - [ ] Build per-artifact reports
+  - [ ] Build system-level summary reports
+  - [ ] Create report artifacts storage
+
+### Phase 5: Production Discipline (Built-In Fixes)
+
+- [ ] **Determinism Contract**
+  - [ ] Enforce run_id, artifact_id, artifact_seq, event_seq in all events
+  - [ ] Validate deterministic seed derivation everywhere
+  - [ ] Test and verify single-writer stable ordering
+  - [ ] Build run diff tooling (compare runs)
+
+- [ ] **Resource Governance**
+  - [ ] Implement separate budgets for artifact workers and heavy pool
+  - [ ] Enforce hard timeouts at all levels (tool, probe, module, job)
+  - [ ] Implement bounded candidate splits
+  - [ ] Implement probe budgets
+  - [ ] Add resource monitoring and alerting
+
+- [ ] **Failure Semantics**
+  - [ ] Ensure all failures emit normalized events
+  - [ ] Build failure taxonomy (tool errors, parse failures, timeouts)
+  - [ ] Test failure-as-data paths
+  - [ ] Validate no silent failures anywhere
+
+- [ ] **Isolation Rules**
+  - [ ] Test per-artifact workspace isolation
+  - [ ] Validate no shared temp dirs
+  - [ ] Enforce no network by default
+  - [ ] Verify raw logs are stored separately with references
+  - [ ] Test tool environment isolation
+
+- [ ] **Caching Rules**
+  - [ ] Implement caching for expensive steps by immutable hash
+  - [ ] Cache binary hash → RE results
+  - [ ] Cache artifact hash → CLI parsing (optional)
+  - [ ] Cache PQC generation templates
+  - [ ] Implement cache invalidation on toolchain hash change
+  - [ ] Build cache hit/miss metrics
+
+### Phase 6: Observability & Operations
+
+- [ ] **Per-Run Visibility**
+  - [ ] Build progress tracking by job count
+  - [ ] Show module stage progress
+  - [ ] Track success/fail/timeout counts
+  - [ ] Build run dashboard
+
+- [ ] **Per-Module Visibility**
+  - [ ] Track runtime percentiles
+  - [ ] Build failure taxonomy rates
+  - [ ] Track tool version failure correlation
+  - [ ] Build module performance dashboard
+
+- [ ] **Heavy Pool Visibility**
+  - [ ] Track queue depth
+  - [ ] Measure wait times
+  - [ ] Track cache hit rates
+  - [ ] Build heavy pool monitoring dashboard
+
+- [ ] **System Health**
+  - [ ] Implement health checks for all services
+  - [ ] Build alerting for failures and anomalies
+  - [ ] Track throughput metrics
+  - [ ] Monitor resource utilization
+
+### Phase 7: Testing & Validation
+
+- [ ] **Unit Tests**
+  - [ ] Test artifact registry operations
+  - [ ] Test run controller logic
+  - [ ] Test job scheduler
+  - [ ] Test each forensics module independently
+  - [ ] Test telemetry pipeline
+  - [ ] Test feature builder
+
+- [ ] **Integration Tests**
+  - [ ] Test full pipeline with synthetic artifacts
+  - [ ] Test determinism (same input → same output)
+  - [ ] Test isolation (parallel jobs don't collide)
+  - [ ] Test timeout enforcement
+  - [ ] Test failure paths
+  - [ ] Test caching correctness
+
+- [ ] **End-to-End Tests**
+  - [ ] Test ciphertext analysis flow
+  - [ ] Test PQC artifact flow
+  - [ ] Test hash/KDF analysis flow
+  - [ ] Test binary analysis flow
+  - [ ] Test hybrid artifact flow
+  - [ ] Test heavy escalation flow
+
+- [ ] **Reproducibility Tests**
+  - [ ] Run same artifact multiple times, verify identical evidence
+  - [ ] Test feature replay from evidence
+  - [ ] Test report regeneration from evidence
+  - [ ] Verify tool inventory pinning works
+
+- [ ] **Safety Tests**
+  - [ ] Verify hash module cannot trigger recovery
+  - [ ] Verify fail-closed routing blocks dangerous paths
+  - [ ] Verify network isolation
+  - [ ] Verify resource limits work
+  - [ ] Test timeout enforcement under load
+
+### Phase 8: Scaling & Productization
+
+- [ ] **Distributed Execution Preparation**
+  - [ ] Abstract job queue behind interface
+  - [ ] Prepare for Kafka/SQS integration
+  - [ ] Prepare for Kubernetes job deployment
+  - [ ] Design horizontal scaling strategy for workers
+
+- [ ] **Multi-Tenancy**
+  - [ ] Implement tenancy boundaries in registry
+  - [ ] Add tenancy to telemetry
+  - [ ] Build rate limits per tenant
+  - [ ] Implement quotas
+  - [ ] Build tenant isolation
+
+- [ ] **API & Interface**
+  - [ ] Build REST API for artifact submission
+  - [ ] Build REST API for run status queries
+  - [ ] Build REST API for report retrieval
+  - [ ] Build CLI tool
+  - [ ] Build SDK/client libraries
+  - [ ] Document API
+
+- [ ] **Deployment & Operations**
+  - [ ] Build deployment automation (Terraform/Kubernetes)
+  - [ ] Create container images with pinned tool versions
+  - [ ] Build configuration management
+  - [ ] Create operational runbooks
+  - [ ] Build backup/disaster recovery procedures
+  - [ ] Implement audit logging
+
+### Phase 9: Documentation
+
+- [ ] Write architecture overview
+- [ ] Document all modules and their contracts
+- [ ] Document evidence event schemas
+- [ ] Document feature schemas
+- [ ] Create operator guide
+- [ ] Create developer guide
+- [ ] Write API reference
+- [ ] Create troubleshooting guide
+- [ ] Document security posture and safety controls
+
+---
+
+## Critical Path (Minimum Viable Product)
+
+For a working MVP, focus on:
+
+1. **Core Infrastructure** (Phase 0 + Phase 1 basics)
+2. **Simple Artifact Flow** (Registry → Scheduler → Worker → Telemetry)
+3. **2-3 Basic Modules** (Router + CLI Inspection + Basic Probes)
+4. **Evidence Store** (Simple JSONL persistence)
+5. **Basic Feature Extraction** (Batch mode)
+6. **Simple Report** (Evidence trace + basic classification)
+7. **Essential Safety** (Timeouts + Isolation + No-network)
+8. **Basic Tests** (Unit + Integration for critical path)
+
+Then iterate to add more modules, heavy pool, models, and scaling features.
