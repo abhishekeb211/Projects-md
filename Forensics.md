@@ -1,5 +1,50 @@
 # Forensics Mode
 
+## Industry-Grade Architecture: Tool-Backed Crypto Forensics with Deterministic Concurrency
+
+### Mission
+
+Build a crypto-forensics pipeline that can ingest real-world artifacts (ciphertexts, keys, certs, PQC blobs, hashes, captures, binaries), run tool-backed analysis in reproducible environments, and emit structured evidence for feature extraction, modeling, and reporting. The system must scale to production volumes without sacrificing reproducibility or traceability.
+
+---
+
+## Product Requirements (Non-Negotiable)
+
+### Functional
+
+- Classify and parse crypto-related artifacts into meaningful families/types
+- Run behavioral, wrapper, protocol, and implementation-level probes
+- Support PQC ground-truth generation and validation using real toolchains
+- Identify and classify hash/KDF materials defensively (audit/IR mode)
+- Produce evidence-linked reports and model-ready features
+
+### Non-Functional (industry constraints)
+
+- **Deterministic outputs** across runs given same inputs + toolchain
+- **Reproducible environments** (tool versions pinned and recorded)
+- **Isolation**: no cross-job temp/config collisions
+- **Observability**: every decision backed by structured evidence and provenance
+- **Safety controls**: hash module must not "accidentally become cracking"
+- **Scalable throughput**: handle thousands to millions of artifacts over time
+
+---
+
+## High-Level System Overview
+
+```
+Inputs (Artifacts / Captures / Binaries)
+→ Ingestion & Registry
+→ Run Control Plane (manifest + policies + inventory)
+→ Artifact Job Orchestration (artifact-parallel execution)
+→ Tool-Backed Forensics Layer (modules)
+→ Evidence Store (Telemetry) (deterministic)
+→ Feature Store
+→ Tiered Models
+→ Reports + APIs
+```
+
+---
+
 ## 3) Forensics Mode (Real-World Ingest + Analysis)
 
 (This is the "someone handed you a blob and swore it's totally normal" mode. The system's job is to turn chaos into evidence, deterministically, without becoming a security incident.)
@@ -45,36 +90,179 @@ Produce structured, evidence-linked outputs suitable for features, modeling, and
 
 ---
 
-### C) Ingestion & Artifact Registry (Forensics Intake Layer)
+## Control Plane (Makes it Feasible in Production)
+
+### C) Ingestion & Artifact Registry (Product-Grade Intake and Identity)
+
+#### Purpose
+
+Product-grade intake and identity management
+
+**Why it matters**: Industry systems don't run "files on disk." They run immutable refs with provenance.
 
 #### Responsibilities
 
-Accept artifacts via API/CLI/batch
+Accept artifacts via API/CLI/batch upload
 
 Compute stable identifiers:
 
-- content hash (artifact hash)
-- internal artifact ID
+- `artifact_hash` (content hash)
+- `artifact_id` (internal UUID)
 
 Store immutable artifact blob in object storage
 
 Record metadata:
 
 - size, MIME/type hints
-- origin/source tags
-- timestamps
-- permissions/ACL scope
+- source identifier (case/source)
+- collection timestamp
+- permissions/ACL/tenant scope
 - chain-of-custody notes (if relevant)
+- optional hints (claimed algorithm, environment, suspected wrapper)
 
 #### Outputs
 
-- **Registry entry** (authoritative index record)
-- **Immutable blob reference** (content-addressed where possible)
+- `artifact_registry` entry (authoritative index record)
+- Immutable blob reference (`artifact_ref`, content-addressed where possible)
 
 #### Operational rules
 
 - No in-place updates to artifacts
 - Any "re-upload" is a new artifact entry; relationships are tracked explicitly
+
+---
+
+### C.1) Run Controller (Mandatory for Determinism)
+
+#### Purpose
+
+Make runs deterministic, auditable, and reproducible
+
+#### Responsibilities
+
+Create `run_id`
+
+Capture tool inventory once:
+
+- tool name/version/path
+- OS profile (Kali/RHEL) + container/image digest
+- provider availability (OpenSSL3 PQC provider, liboqs version)
+
+Freeze run policy:
+
+- concurrency limits
+- tool/module timeouts
+- seeding rules (deterministic seeds derived from artifact hash + run config)
+- safety mode flags (e.g., `audit_only_hashes=true`)
+
+Start telemetry services:
+
+- event writer
+- metrics/monitoring hooks
+
+#### Outputs
+
+- `run_manifest.json` (signed/immutable if needed)
+- `tool_inventory.json`
+
+---
+
+### C.2) Artifact Job Scheduler (Artifact-Level Parallelism)
+
+#### Purpose
+
+Scale horizontally by making artifacts independent jobs
+
+#### Responsibilities
+
+Create one **Artifact Job** per artifact (or per bundle when needed)
+
+Assign job metadata:
+
+- `artifact_seq` (stable ordering within run)
+- job class (light-only vs heavy-eligible)
+- per-artifact workspace specification (logical, not shared)
+
+Enforce backpressure:
+
+- maximum in-flight artifact jobs
+- priority routing (interactive vs batch)
+
+#### Industry scaling
+
+This is where you plug in **Kafka/SQS/Celery/Ray/Kubernetes Jobs** later. The architecture doesn't change.
+
+---
+
+### C.3) Artifact Worker Pool (Parallel Throughput Tier)
+
+#### Purpose
+
+Execute many artifact jobs concurrently without shared-state bugs
+
+#### Execution Model
+
+- **Parallel across artifacts** (max throughput)
+- **Mostly sequential module execution** inside each artifact job (stable state)
+- **Bounded "quick-parallel"** inside job only for independent checks
+
+#### Rules
+
+- Workers never write final logs or features directly
+- Workers emit events to a centralized telemetry stream
+- Per-artifact workspace is isolated (no shared temp dirs, no shared configs)
+
+---
+
+### C.4) Shared Heavy Work Pool (Governor Tier)
+
+#### Purpose
+
+Allow heavy analysis without taking down the system
+
+#### Runs
+
+- Math workbench (Sage/PARI heavy tests)
+- PQC batch generation
+- Deep reverse engineering (Ghidra-heavy workflows)
+
+#### Discipline majors
+
+- Process isolation
+- Strict concurrency caps
+- Strict timeouts
+- Optional resource limits (memory/CPU)
+
+#### Product behavior
+
+Heavy work is a **scarce resource by design**. The heavy pool is the governor.
+
+---
+
+### C.5) Deterministic Telemetry Pipeline (Single Writer Semantics)
+
+#### Purpose
+
+Stop parallelism from corrupting evidence
+
+#### Responsibilities
+
+Consume emitted events from workers
+
+Persist them deterministically with:
+
+- `artifact_seq` + `event_seq`
+- normalized timestamps
+
+Store:
+
+- module events (JSONL or structured log store)
+- tool-run events (commands, exit status, parsed outputs)
+- pointers to raw logs (content-addressed blobs)
+
+#### Why it matters
+
+Production needs **diffable runs**, **reproducible evaluations**, and **audit trails**.
 
 ---
 
