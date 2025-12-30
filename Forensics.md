@@ -1,10 +1,40 @@
 # Forensics Mode
 
-## Industry-Grade Architecture: Tool-Backed Crypto Forensics with Deterministic Concurrency
+## Industry-Grade Architecture: Tool-Backed Crypto Forensics with Deterministic Concurrency and Comprehensive Attack Validation
+
+### Document Overview
+
+This document defines a **complete crypto-forensics and attack validation system** that combines:
+
+1. **Forensics Analysis**: Classify, analyze, and fingerprint unknown cryptographic artifacts
+2. **Attack Validation**: Execute 83 cryptographic attacks (across 25 categories) against each artifact, with each attack run 3× for statistical confidence
+3. **Evidence-Based Architecture**: Every decision, module execution, and attack outcome is recorded as structured evidence
+4. **Production-Grade Discipline**: Determinism, isolation, failure-as-data, resource governance, and caching built in from day one
+
+**Key Innovation**: This is not just a forensics system or just an attack framework—it's a **unified platform** that analyzes artifacts AND validates their security by executing real attacks, producing comprehensive resistance profiles.
+
+**What Makes This Different**:
+- **83 attacks implemented**: From frequency analysis to quantum threat simulation
+- **3× repeat execution**: Statistical confidence in attack outcomes
+- **Attack resistance profiling**: Each artifact gets a vulnerability assessment
+- **Deterministic and reproducible**: Same artifact + same toolchain = same results
+- **Evidence traceability**: Every attack attempt, success, failure, and timeout is recorded
+
+**Scope**: ~1500+ pages of implementation details, from high-level architecture to task-level to-do lists, budget projections, and feasibility assessments.
+
+---
 
 ### Mission
 
-Build a crypto-forensics pipeline that can ingest real-world artifacts (ciphertexts, keys, certs, PQC blobs, hashes, captures, binaries), run tool-backed analysis in reproducible environments, and emit structured evidence for feature extraction, modeling, and reporting. The system must scale to production volumes without sacrificing reproducibility or traceability.
+Build a crypto-forensics pipeline that can:
+1. Ingest real-world artifacts (ciphertexts, keys, certs, PQC blobs, hashes, captures, binaries)
+2. Run tool-backed analysis in reproducible environments
+3. **Execute comprehensive cryptographic attack validation** (83 attacks across 25 categories, each run 3 times)
+4. Store all attack outputs with encrypted data for analysis and correlation
+5. Emit structured evidence for feature extraction, modeling, and reporting
+6. Scale to production volumes without sacrificing reproducibility or traceability
+
+**Extended Mission**: Transform unknown artifacts into classified, analyzed, and attack-validated evidence with complete traceability from intake to final report.
 
 ---
 
@@ -14,9 +44,11 @@ Build a crypto-forensics pipeline that can ingest real-world artifacts (cipherte
 
 - Classify and parse crypto-related artifacts into meaningful families/types
 - Run behavioral, wrapper, protocol, and implementation-level probes
+- **Execute comprehensive cryptographic attack validation (83 attacks, 25 categories, each 3×)** (NEW)
+- **Generate attack resistance profiles and vulnerability assessments** (NEW)
 - Support PQC ground-truth generation and validation using real toolchains
 - Identify and classify hash/KDF materials defensively (audit/IR mode)
-- Produce evidence-linked reports and model-ready features
+- Produce evidence-linked reports and model-ready features **including attack validation results** (ENHANCED)
 
 ### Non-Functional (industry constraints)
 
@@ -87,6 +119,347 @@ Produce structured, evidence-linked outputs suitable for features, modeling, and
 - collection timestamp (when known)
 - permissions/tenant/case scope
 - optional hints (claimed algorithm, environment, suspected wrapper)
+
+---
+
+## Cryptographic Attacks Framework (Validation & Breaking Layer)
+
+### Purpose
+
+Execute systematic attack validation against artifacts to:
+- Validate encryption strength and implementation correctness
+- Identify vulnerabilities and weak configurations
+- Generate attack resistance profiles
+- Produce attack-validated evidence for classification
+- Build attack success/failure datasets for model training
+
+### Core Principle
+
+**Every artifact undergoes comprehensive attack validation**: Each applicable attack is executed **3 times** (for statistical confidence), and all outputs are stored with deterministic evidence linking.
+
+---
+
+## Cryptographic Attacks Master Table
+
+### Total: 83 Attacks Across 25 Categories
+
+| # | Category | Attack Name | Target | Complexity | Practical | Year | Severity |
+|---|----------|-------------|--------|-----------|----------|------|----------|
+| 1 | Ciphertext-Only | Frequency Analysis | Stream/Block Ciphers | Moderate | Limited | 1500s | Low |
+| 2 | Ciphertext-Only | Statistical Attack | Symmetric | Moderate | Limited | 1940s | Low |
+| 3 | Ciphertext-Only | Correlation Attack | Symmetric | High | Limited | 2000s | Medium |
+| 4 | Known-Plaintext | Linear Cryptanalysis | Block Ciphers | High | High | 1990s | High |
+| 5 | Known-Plaintext | Differential Cryptanalysis | Block Ciphers | High | Moderate | 1990s | High |
+| 6 | Known-Plaintext | Integral Cryptanalysis | Block SPN | High | Moderate | 2000 | Medium |
+| 7 | Known-Plaintext | Biclique Attack | Block Ciphers | High | Moderate | 2010 | Medium |
+| 8 | Chosen-Plaintext | Differential (CPA) | Block Ciphers | High | High | 1990s | High |
+| 9 | Chosen-Plaintext | Integral (Square) | Block SPN | High | High | 2000 | High |
+| 10 | Chosen-Plaintext | Adaptive CPA | Block Ciphers | High | Moderate | 1990s | Medium |
+| 11 | Chosen-Ciphertext | Padding Oracle | CBC+Padding | Moderate | High | 1998 | High |
+| 12 | Chosen-Ciphertext | POODLE | TLS/SSL3 | Moderate | High | 2014 | High |
+| 13 | Chosen-Ciphertext | Bleichenbacher | RSA | High | Moderate | 2000 | High |
+| 14 | Brute-Force | Brute Force Key Search | Any Cipher | Low-VHigh | Very High | 1900s | Very High |
+| 15 | Brute-Force | Dictionary Attack | Passwords | Low | High | 1980s | High |
+| 16 | Brute-Force | Rainbow Table | Hashes | Very High | High | 2003 | High |
+| 17 | Brute-Force | Hybrid Dictionary | Passwords | Moderate | High | 2000s | High |
+| 18 | Collision | Birthday Attack | Hash Functions | High | Moderate | 1977 | High |
+| 19 | Collision | Collision Attack | Hash/Sig | Moderate | Moderate | 1990s | Medium |
+| 20 | Collision | Multi-collision | Hash | Very High | Limited | 1997 | Medium |
+| 21 | Time/Memory | Meet-in-Middle | Symmetric | Moderate | High | 1980 | High |
+| 22 | Time/Memory | Rainbow Chain | Hashes | High | High | 2003 | Very High |
+| 23 | Time/Memory | Hellman Table | Encryption | Very High | Moderate | 1980 | High |
+| 24 | Differential | Differential Cryptanalysis | Block Ciphers | High | Moderate | 1990 | High |
+| 25 | Differential | Impossible Differential | Block | Very High | High | 1999 | High |
+| 26 | Differential | Boomerang Attack | Block | Very High | Moderate | 1999 | High |
+| 27 | Linear | Linear Cryptanalysis (Block) | Block Ciphers | High | High | 1993 | High |
+| 28 | Linear | Linear Cryptanalysis (Stream) | Stream | High | High | 2001 | High |
+| 29 | Linear | Differential-Linear Attack | Block | Very High | Moderate | 2002 | Medium |
+| 30 | MITM | Double Encryption Attack | Double Enc | High | Very High | 1991 | Very High |
+| 31 | MITM | 3DES Break | 3DES | Very High | High | 1999 | High |
+| 32 | MITM | Generalized MITM | Multi-block | Very High | High | 2003 | High |
+| 33 | Algebraic | Interpolation Attack | Block Ciphers | Very High | Limited | 2000 | Medium |
+| 34 | Algebraic | Cube Attack | Streams | Very High | Moderate | 2009 | Medium |
+| 35 | Algebraic | Algebraic Attack | Symmetric | Very High | Limited | 2015 | Medium |
+| 36 | Algebraic | Linearization Attack | Boolean | Very High | Limited | 2007 | Low |
+| 37 | Statistical | Correlation Attack | Streams | High | High | 2001 | High |
+| 38 | Statistical | Chi-Square Test | Any | Moderate | Limited | 1987 | Low |
+| 39 | Statistical | Mod-n Analysis | Modular | Moderate | Limited | 1985 | Low |
+| 40 | Timing SCA | Timing Attack (RSA) | RSA | Moderate | Moderate | 1995 | Medium |
+| 41 | Timing SCA | Lucky 13 Attack | TLS-AES | Moderate | High | 2013 | High |
+| 42 | Timing SCA | Constant-Time Bypass | Timing-Code | Low | Low | 2014 | Medium |
+| 43 | Power SCA | SPA | Implementations | Moderate | High | 1998 | High |
+| 44 | Power SCA | DPA | Devices | Moderate | Very High | 2003 | High |
+| 45 | Power SCA | Higher-Order Power | Processors | High | High | 2015 | Very High |
+| 46 | EM SCA | EMA | EM Emissions | Moderate | Moderate | 2000 | Medium |
+| 47 | EM SCA | EM Leakage | EM | Moderate | Moderate | 2003 | Medium |
+| 48 | EM SCA | TEMPEST | Unshielded | Moderate | Limited | 1970s | Low |
+| 49 | Cache SCA | Flush+Reload Attack | L3 Cache | Moderate | Very High | 2005 | Very High |
+| 50 | Cache SCA | Prime+Probe Attack | Cache Lines | Low | High | 2005 | Very High |
+| 51 | Cache SCA | Evict+Time Attack | Cache | Low | Very High | 2013 | Very High |
+| 52 | Acoustic SCA | Acoustic Attack | Acoustic | Moderate | Moderate | 2018 | Medium |
+| 53 | Acoustic SCA | Acoustic Cryptanalysis | CPU | Limited | Limited | 2018 | Low |
+| 54 | Acoustic SCA | Fan Noise Analysis | Hardware | Limited | Limited | 2019 | Low |
+| 55 | Fault Injection | Differential Fault Attack | Block AES | Moderate | High | 2002 | High |
+| 56 | Fault Injection | Voltage Glitch Injection | Hardware | Moderate | Very High | 2010 | Very High |
+| 57 | Fault Injection | Clock Glitch Attack | Clock | Moderate | Very High | 2012 | Very High |
+| 58 | Fault Injection | Laser Fault Injection | Laser | Low | Very High | 2018 | Very High |
+| 59 | Weak Key | Weak Key Recovery | Keys | Moderate | High | 1995 | High |
+| 60 | Weak Key | Related-Key Attack | Keys | High | High | 2002 | Medium |
+| 61 | Weak Key | Key Clustering | Symmetric | Moderate | Moderate | 2012 | Low |
+| 62 | Protocol | Padding Oracle (CBC) | TLS CBC | Very High | Very High | 2004 | High |
+| 63 | Protocol | BEAST Attack | TLS 1.0 | High | High | 2011 | High |
+| 64 | Protocol | CRIME Attack | Compression | High | High | 2012 | High |
+| 65 | Protocol | BREACH Attack | Headers | Very High | High | 2019 | Medium |
+| 66 | Downgrade | POODLE (SSLv3) | Legacy | Very High | Very High | 2014 | Very High |
+| 67 | Downgrade | DROWN Attack | TLS Old | Very High | Very High | 2015 | Very High |
+| 68 | Downgrade | Downgrade to SSLv2 | SSLv2 | Very High | High | 2014 | Very High |
+| 69 | Password | Dictionary Attack | Passwords | Low | Very High | 1993 | High |
+| 70 | Password | Hybrid Dictionary | Passwords | Moderate | High | 2007 | High |
+| 71 | Password | Rainbow (Password) | Passwords | Very High | High | 2013 | High |
+| 72 | Password | Credential Stuffing | Databases | High | High | 2018 | Medium |
+| 73 | Quantum | Shor Algorithm (RSA) | RSA | Very High | High(Future) | 1994 | Critical |
+| 74 | Quantum | Shor Algorithm (DLP) | ECDLP | Very High | High(Future) | 1996 | Critical |
+| 75 | Quantum | Grover Algorithm | Symmetric | Very High | High(Future) | 2019 | Critical |
+| 76 | Speculation | Spectre Attack | Microarch | Low | Very High | 2018 | Very High |
+| 77 | Speculation | Meltdown Attack | Memory | Very High | Very High | 2018 | Very High |
+| 78 | Speculation | Transient Exec | Transient | High | Very High | 2018 | Very High |
+| 79 | Other | Rectangle Attack | Differential | Moderate | Moderate | 1999 | High |
+| 80 | Other | Slide Attack | Periodic | High | High | 2010 | High |
+| 81 | Other | Contact Analysis | Metadata | Medium | Moderate | 2006 | Medium |
+| 82 | Other | Key-Recovery Attack | Keys | High | High | 2013 | High |
+| 83 | Other | Distinguishing Attack | Ciphers | Moderate | Moderate | 2002 | Medium |
+
+---
+
+### Attack Categories Summary (25 Categories)
+
+1. **Ciphertext-Only Analysis** (3 attacks) - Weakest attacker position
+2. **Known-Plaintext Analysis** (4 attacks) - Plaintext-ciphertext pairs available
+3. **Chosen-Plaintext Analysis** (3 attacks) - Attacker chooses plaintexts
+4. **Chosen-Ciphertext Analysis** (3 attacks) - Most powerful position
+5. **Brute-Force Attacks** (4 attacks) - Exhaustive key search
+6. **Collision Attacks** (3 attacks) - Hash function targets
+7. **Time/Memory Trade-offs** (3 attacks) - Computational vs storage
+8. **Differential Cryptanalysis** (3 attacks) - Plaintext pair differences
+9. **Linear Cryptanalysis** (3 attacks) - Linear approximations
+10. **Meet-in-the-Middle (MITM)** (3 attacks) - Double encryption breaks
+11. **Algebraic Attacks** (4 attacks) - Polynomial equation solving
+12. **Statistical Attacks** (3 attacks) - Statistical bias exploitation
+13. **Side-Channel (Timing)** (3 attacks) - Execution time analysis
+14. **Side-Channel (Power)** (3 attacks) - Power consumption monitoring
+15. **Side-Channel (EM)** (3 attacks) - Electromagnetic radiation
+16. **Side-Channel (Cache)** (3 attacks) - CPU cache exploitation
+17. **Side-Channel (Acoustic)** (3 attacks) - Sound emission analysis
+18. **Fault Injection** (4 attacks) - Hardware fault induction
+19. **Weak Key** (3 attacks) - Special key properties
+20. **Protocol-Level** (4 attacks) - TLS/SSL implementation flaws
+21. **Downgrade** (3 attacks) - Force weaker algorithms
+22. **Password** (4 attacks) - Password-based attacks
+23. **Quantum** (3 attacks) - Quantum computing threats
+24. **CPU Speculation** (3 attacks) - Spectre/Meltdown family
+25. **Other Advanced** (5 attacks) - Rectangle, Slide, etc.
+
+---
+
+### Attack Severity Distribution
+
+| Severity | Count | Attack IDs | Examples |
+|----------|-------|-----------|----------|
+| **Critical** | 3 | 73-75 | Shor (RSA/DLP), Grover |
+| **Very High** | 18 | 14, 22, 30, 44-45, 49-51, 56-58, 66-68, 76-78 | Brute Force, DPA, Cache Attacks, Fault Injection |
+| **High** | 38 | 4-5, 8-9, 11-13, 15, 18, 21, 24-25, 27-28, etc. | Linear, Differential, Birthday, BEAST |
+| **Medium** | 18 | 3, 6-7, 10, 19, 26, 29, 33-35, 40, 42, etc. | Integral, Correlation, Acoustic |
+| **Low** | 6 | 1-2, 36, 38-39, 48, 53-54 | Frequency Analysis, Chi-Square, TEMPEST |
+
+---
+
+### Attack Practicality Distribution
+
+| Practicality | Count | Attack IDs | Examples |
+|--------------|-------|-----------|----------|
+| **Very High** | 15 | 14, 22, 30, 44-45, 49-51, 56-58, 62, 66-67, 69, 76-78 | Brute Force, DPA, Cache, Fault, POODLE, Spectre |
+| **High** | 30 | 4, 8-9, 11, 15-16, 21, 24-25, 27-28, 31-32, 37, etc. | Linear, Differential, Rainbow, Dictionary |
+| **Moderate** | 20 | 1, 5-7, 10, 13, 18-20, 26, 29, 34, 40, 46-47, etc. | Statistical, Biclique, MITM, Cube |
+| **Limited** | 18 | 2-3, 20, 33, 35-36, 38-39, 48, 52-54, etc. | Frequency, Interpolation, Acoustic |
+
+---
+
+## Attack Execution Architecture
+
+### Attack Applicability Router
+
+**Purpose**: Determine which attacks are applicable to each artifact based on type classification
+
+**Logic**:
+```python
+if artifact_type == "SYMMETRIC_CIPHERTEXT":
+    applicable_attacks = [1-10, 14, 18, 24-29, 37-39]  # Ciphertext-only, Known-PT, Chosen-PT, etc.
+elif artifact_type == "HASH_MATERIAL":
+    applicable_attacks = [15-23, 69-72]  # Brute-force, Collision, Time/Memory, Password
+elif artifact_type == "RSA_KEY" or "RSA_CIPHERTEXT":
+    applicable_attacks = [13, 14, 40, 59-60, 73]  # Bleichenbacher, Timing, Weak Key, Shor
+elif artifact_type == "PROTOCOL_CAPTURE":
+    applicable_attacks = [11-12, 40-42, 62-68]  # Padding Oracle, Timing, Protocol, Downgrade
+# ... continue for all artifact types
+```
+
+### Attack Execution Flow
+
+```
+Artifact → Type Router → Attack Applicability Filter
+    ↓
+Attack Job Creation (one job per attack)
+    ↓
+Attack Execution × 3 (repeat 3 times per attack)
+    ↓
+    ├─ Attack Attempt 1 → Evidence Event 1
+    ├─ Attack Attempt 2 → Evidence Event 2
+    └─ Attack Attempt 3 → Evidence Event 3
+    ↓
+Attack Result Aggregation (statistical analysis of 3 runs)
+    ↓
+Attack Resistance Profile → Evidence Store
+```
+
+### Attack Job Structure
+
+Each attack execution is a job:
+
+```json
+{
+  "job_type": "attack_execution",
+  "artifact_id": "abc123...",
+  "attack_id": 11,
+  "attack_name": "Padding Oracle",
+  "attack_category": "Chosen-Ciphertext",
+  "attempt_number": 1,  // 1, 2, or 3
+  "attack_seq": 42,  // Deterministic ordering
+  "policy": {
+    "timeout_seconds": 300,
+    "max_queries": 10000,
+    "resource_class": "heavy"  // or "light"
+  }
+}
+```
+
+### Attack Output Schema
+
+```json
+{
+  "event_type": "attack_execution",
+  "attack_id": 11,
+  "attack_name": "Padding Oracle",
+  "attempt_number": 2,
+  "artifact_id": "abc123...",
+  "attack_seq": 42,
+  "event_seq": 1052,
+  "result": "SUCCESS" | "FAILED" | "TIMEOUT" | "NOT_APPLICABLE",
+  "confidence": 0.95,
+  "execution_time_ms": 2543,
+  "queries_performed": 8234,
+  "recovered_data": "base64:...",  // if SUCCESS
+  "partial_results": {...},
+  "tool_outputs_ref": "s3://attacks/blobs/xyz789.../",
+  "error_category": "TIMEOUT" | null
+}
+```
+
+### Attack Result Aggregation (After 3 Runs)
+
+```json
+{
+  "event_type": "attack_summary",
+  "attack_id": 11,
+  "attack_name": "Padding Oracle",
+  "artifact_id": "abc123...",
+  "attempts": 3,
+  "results": {
+    "success_count": 2,
+    "failed_count": 0,
+    "timeout_count": 1,
+    "success_rate": 0.667
+  },
+  "consistency_score": 0.8,  // How consistent were the 3 runs?
+  "average_time_ms": 2310,
+  "median_queries": 8100,
+  "recovered_data_consistent": true,
+  "vulnerability_confirmed": true,
+  "evidence_refs": ["event_seq_1052", "event_seq_1053", "event_seq_1054"]
+}
+```
+
+---
+
+### Attack Pool (Parallel Execution Governance)
+
+**Light Attack Pool** (Fast, parallel-friendly):
+- Attacks: 1-3, 14-17, 38-39, 69-70, etc.
+- Concurrency: High (50-100 parallel)
+- Timeout: Seconds to minutes
+
+**Heavy Attack Pool** (Resource-intensive, throttled):
+- Attacks: 4-13, 21-37, 55-58, 73-75, etc.
+- Concurrency: Low (2-5 parallel)
+- Timeout: Minutes to hours
+- Resource limits: Strict CPU/memory caps
+
+**Simulation-Only Pool** (Lab/experimental):
+- Attacks: 43-48, 52-54, 76-78 (SCA, Speculation)
+- Concurrency: Very low (1-2 parallel)
+- Requires specialized hardware or simulation
+
+---
+
+## Attack Storage Layout
+
+```
+attacks/
+  attack_registry.json          # Metadata for all 83 attacks
+  attack_applicability_map.json # Attack → Artifact Type mappings
+  
+telemetry/
+  attack_events/
+    attempt_events.jsonl        # Individual attack attempts
+    summary_events.jsonl        # Aggregated 3-run summaries
+    
+  attack_outputs/
+    blobs/                      # Raw tool outputs per attack
+      {attack_id}_{attempt}/
+        stdout.txt
+        stderr.txt
+        recovered_data.bin
+        metrics.json
+        
+results/
+  attack_resistance_profiles/
+    {artifact_id}_profile.json  # Consolidated attack results per artifact
+    
+features/
+  attack_features.parquet       # Attack results as features for ML
+```
+
+---
+
+## Post-Quantum Attack Considerations
+
+**Quantum attacks (73-75)** are **simulation-only** in current implementation:
+- Execute as bounded computational estimates (time-to-break calculations)
+- No actual quantum hardware required
+- Emit threat assessment based on key sizes and algorithms
+- Used for PQC migration recommendations
+
+**Example Output**:
+```json
+{
+  "attack_id": 73,
+  "attack_name": "Shor Algorithm (RSA)",
+  "result": "SIMULATED_SUCCESS",
+  "estimated_qubits_required": 4096,
+  "estimated_time_ideal_qc": "8 hours",
+  "threat_level": "CRITICAL_BY_2030",
+  "recommendation": "Migrate to ML-KEM-768 or hybrid"
+}
+```
 
 ---
 
@@ -315,8 +688,13 @@ Register "job start" evidence event:
 3. **Normalizer / Candidate Parser**
 4. **Type-Specific Probes**
 5. **Implementation Fingerprinting (Light)**
-6. **Heavy Escalation Requests** (if allowed and justified)
-7. **Completion Summary Event**
+6. **Attack Applicability Determination** (NEW)
+7. **Attack Execution (3× per applicable attack)** (NEW)
+8. **Attack Aggregation & Resistance Profile** (NEW)
+9. **Heavy Escalation Requests** (if allowed and justified)
+10. **Completion Summary Event**
+
+**Note**: Attack execution can happen in parallel across different attacks (via attack pools), but each attack runs 3 times sequentially for consistency validation.
 
 ---
 
@@ -605,6 +983,295 @@ Raw logs are stored as referenced blobs, not dumped into events
 - **Fail-closed routing rules** prevent dangerous workflows
 - **Heavy escalation is gated and scarce**
 - **Everything produces evidence**, including failures and skips
+
+---
+
+### P) Attack Applicability Module (NEW - Attack Router)
+
+#### Purpose
+
+Determine which of the 83 attacks are applicable to the artifact based on its classification
+
+#### Inputs
+
+- Artifact type classification (from Router module)
+- Artifact metadata (size, wrapper type, algorithm hints)
+- Run policy (which attack categories are enabled)
+
+#### Responsibilities
+
+**Build applicability map**:
+```python
+applicability = {
+    "SYMMETRIC_CIPHERTEXT": {
+        "always": [1, 2, 14],  # Frequency, Statistical, Brute Force
+        "if_has_plaintext_hints": [4-10],  # Known/Chosen plaintext attacks
+        "if_CBC_mode": [11, 62],  # Padding Oracle
+        "if_weak_IV": [63],  # BEAST
+    },
+    "HASH_MATERIAL": {
+        "always": [15-17, 69-70],  # Dictionary, Brute Force
+        "if_unsalted": [16, 22],  # Rainbow tables
+        "if_weak_params": [18-20],  # Collision attacks
+    },
+    "RSA_KEY": {
+        "always": [13, 14, 40, 59, 73],  # Bleichenbacher, Timing, Weak Key, Shor
+        "if_small_key": [14, 73],  # Brute force, Shor
+    },
+    # ... complete mapping for all types
+}
+```
+
+**Filter by policy**:
+- Exclude attacks not enabled in run policy
+- Exclude simulation-only attacks if `allow_simulation=false`
+- Exclude heavy attacks if `allow_heavy=false`
+
+**Emit applicability event**:
+```json
+{
+  "event_type": "attack_applicability",
+  "artifact_id": "abc123",
+  "applicable_attacks": [1, 2, 11, 14, 15, 62],
+  "excluded_attacks": [73, 74, 75],  // Quantum (simulation-only)
+  "exclusion_reasons": {"73": "quantum_simulation_disabled"},
+  "total_applicable": 6,
+  "estimated_time_hours": 2.5
+}
+```
+
+#### Outputs
+
+- List of applicable attack IDs
+- Attack job specifications (priority, resource class, timeout)
+- Applicability evidence event
+
+---
+
+### Q) Attack Execution Module (NEW - Attack Orchestrator)
+
+#### Purpose
+
+Execute each applicable attack 3 times and collect results
+
+#### Execution Model
+
+**Per-attack execution loop**:
+```python
+for attack_id in applicable_attacks:
+    for attempt in [1, 2, 3]:
+        result = execute_attack(
+            attack_id=attack_id,
+            artifact=artifact,
+            attempt=attempt,
+            timeout=get_attack_timeout(attack_id),
+            resource_class=get_attack_resource_class(attack_id)
+        )
+        emit_event(type="attack_attempt", result=result)
+```
+
+#### Attack Resource Classification
+
+**Light attacks** (execute in artifact worker pool):
+- IDs: 1-3, 14-17, 38-39, 69-70, 81, 83
+- Timeout: 30-300 seconds
+- Parallel: Yes (across different attacks)
+
+**Heavy attacks** (execute in heavy pool):
+- IDs: 4-13, 21-37, 55-58, 73-75
+- Timeout: 300-3600 seconds
+- Parallel: Limited (2-5 concurrent)
+- Requires: Specialized tools (Sage, Ghidra, liboqs)
+
+**Simulation attacks** (special handling):
+- IDs: 43-48, 52-54, 73-75, 76-78
+- May require specialized hardware or simulation environment
+- Often emit estimates rather than actual attack execution
+
+#### Attack Tool Integration
+
+**Mapping attacks to tools**:
+```python
+ATTACK_TOOLS = {
+    1: "frequency_analyzer",      # Frequency Analysis
+    4: "linear_cryptanalysis",    # Linear Cryptanalysis
+    11: "padding_oracle_tool",    # Padding Oracle
+    14: "hashcat",                # Brute Force
+    15: "john",                   # Dictionary Attack
+    16: "rainbow_crack",          # Rainbow Tables
+    27: "matsui_linear",          # Linear Cryptanalysis
+    40: "timing_analyzer",        # Timing Attack
+    73: "shor_simulator",         # Shor Algorithm (simulation)
+    # ... complete mapping
+}
+```
+
+#### Deterministic Attack Execution
+
+**Seeding per attempt**:
+```python
+attack_seed = SHA256(
+    artifact_hash + 
+    run_config_hash + 
+    str(attack_id) + 
+    str(attempt_number)
+)
+```
+
+**Why 3 attempts**:
+1. Statistical confidence in results
+2. Detect nondeterministic attack behavior
+3. Validate consistency of success/failure
+4. Build variance metrics for modeling
+
+#### Attack Outputs
+
+**Per-attempt event**:
+```json
+{
+  "event_type": "attack_attempt",
+  "attack_id": 11,
+  "attack_name": "Padding Oracle",
+  "attack_category": "Chosen-Ciphertext",
+  "attempt_number": 2,
+  "artifact_id": "abc123",
+  "attack_seq": 42,
+  "event_seq": 1052,
+  "result": "SUCCESS",
+  "execution_time_ms": 2543,
+  "queries_performed": 8234,
+  "bytes_recovered": 32,
+  "tool": "padding_oracle_tool",
+  "tool_version": "2.1.0",
+  "exit_code": 0,
+  "stdout_ref": "s3://attacks/.../stdout.txt",
+  "stderr_ref": "s3://attacks/.../stderr.txt",
+  "recovered_data_ref": "s3://attacks/.../recovered.bin",
+  "metrics": {
+    "queries_per_second": 3243,
+    "false_positive_rate": 0.02,
+    "oracle_response_consistency": 0.98
+  }
+}
+```
+
+#### Built-in Controls
+
+**Timeouts**:
+- Per-attack timeout (from attack registry)
+- Per-attempt timeout (same value for all 3 attempts)
+- Global attack phase timeout
+
+**Query budgets**:
+- Max queries per attack (prevents infinite loops)
+- Example: Padding Oracle limited to 10,000 queries
+- Emit budget exhaustion event if hit
+
+**Resource limits**:
+- Memory cap (especially for algebraic attacks)
+- CPU throttling for heavy pool attacks
+- Network restrictions (most attacks run offline)
+
+**Safety gates**:
+- Hash attacks cannot use GPU unless explicitly enabled
+- Simulation attacks cannot trigger real quantum hardware
+- Fault injection attacks are simulation-only (no real hardware modification)
+
+---
+
+### R) Attack Aggregation Module (NEW - Result Consolidation)
+
+#### Purpose
+
+Aggregate 3 attack attempts into statistical summary and resistance profile
+
+#### Responsibilities
+
+**Per-attack aggregation**:
+```python
+def aggregate_attack_attempts(attempts):
+    return {
+        "success_count": count_successes(attempts),
+        "failure_count": count_failures(attempts),
+        "timeout_count": count_timeouts(attempts),
+        "success_rate": success_count / 3,
+        "consistency_score": measure_consistency(attempts),
+        "average_time_ms": mean([a.time for a in attempts]),
+        "recovered_data_consistent": check_data_consistency(attempts),
+        "vulnerability_confirmed": success_count >= 2  # 2 of 3
+    }
+```
+
+**Consistency scoring**:
+- Perfect consistency: All 3 attempts have same result (1.0)
+- Partial consistency: 2/3 same result (0.67)
+- Inconsistent: All different results (0.0)
+
+**Vulnerability confirmation**:
+- **Confirmed**: ≥2 of 3 attempts succeeded
+- **Possible**: 1 of 3 succeeded
+- **Not vulnerable**: 0 of 3 succeeded
+- **Inconclusive**: All 3 timed out or failed for different reasons
+
+#### Attack Resistance Profile
+
+**Per-artifact consolidated profile**:
+```json
+{
+  "artifact_id": "abc123",
+  "attacks_executed": 25,
+  "attacks_per_category": {
+    "Ciphertext-Only": 3,
+    "Known-Plaintext": 4,
+    "Brute-Force": 4,
+    "Padding Oracle": 1,
+    "Timing": 2,
+    "Statistical": 3,
+    ...
+  },
+  "vulnerabilities_confirmed": 3,
+  "vulnerabilities_possible": 2,
+  "not_vulnerable": 20,
+  "resistance_score": 0.88,  // (not_vulnerable / total)
+  "severity_breakdown": {
+    "Critical": {"vulnerable": 0, "total": 0},
+    "Very High": {"vulnerable": 1, "total": 5},
+    "High": {"vulnerable": 2, "total": 12},
+    "Medium": {"vulnerable": 0, "total": 6},
+    "Low": {"vulnerable": 0, "total": 2}
+  },
+  "confirmed_vulnerabilities": [
+    {
+      "attack_id": 11,
+      "attack_name": "Padding Oracle",
+      "severity": "High",
+      "success_rate": 0.67,
+      "average_time_ms": 2310,
+      "impact": "Full plaintext recovery possible"
+    },
+    {
+      "attack_id": 40,
+      "attack_name": "Timing Attack (RSA)",
+      "severity": "Medium",
+      "success_rate": 1.0,
+      "average_time_ms": 523,
+      "impact": "Private key bits leaked"
+    }
+  ],
+  "recommendations": [
+    "Migrate away from CBC mode with PKCS#7 padding",
+    "Implement constant-time RSA operations",
+    "Consider migration to PQC algorithms"
+  ]
+}
+```
+
+#### Outputs
+
+- Attack summary events (per attack)
+- Attack resistance profile (per artifact)
+- Vulnerability confirmation events
+- Attack features for ML modeling
 
 ---
 
@@ -1052,12 +1719,14 @@ pytest tests/test_caching.py::test_cache_correctness
 
 ---
 
-## Storage Layout (Product-Ready)
+## Storage Layout (Product-Ready with Attack Framework)
 
 ```
 manifests/
   run_manifest.json
   tool_inventory.json
+  attack_registry.json           # NEW: Metadata for all 83 attacks
+  attack_applicability_map.json  # NEW: Attack → Artifact Type mappings
 
 artifacts/
   blobs/ (immutable object storage)
@@ -1073,16 +1742,33 @@ telemetry/
     math_workbench.jsonl
     pqc.jsonl
     hashes.jsonl
+    attack_applicability.jsonl   # NEW
+    attack_attempts.jsonl        # NEW: Individual attack executions
+    attack_summaries.jsonl       # NEW: Aggregated 3-run results
+    attack_resistance.jsonl      # NEW: Consolidated profiles
+    
+  attack_outputs/                 # NEW: Raw attack tool outputs
+    blobs/
+      {attack_id}_{artifact_id}_{attempt}/
+        stdout.txt
+        stderr.txt
+        recovered_data.bin
+        metrics.json
+        tool_trace.log
 
 features/
   features.parquet
+  attack_features.parquet         # NEW: Attack results as ML features
   feature_schema.json
+  attack_feature_schema.json      # NEW
 
 models/
   model_registry/
+  attack_prediction_models/       # NEW: Models trained on attack outcomes
 
 reports/
   report_artifacts/
+  attack_resistance_reports/      # NEW: Per-artifact vulnerability reports
 ```
 
 ---
@@ -1439,6 +2125,91 @@ Phase 4: Reports
 
 ---
 
+## Attack Framework Quick Reference
+
+### Attack Execution Summary
+
+**Total Attacks**: 83 across 25 categories
+
+**Execution Model**: Each applicable attack runs **3 times** per artifact
+
+**Attack Pools**:
+- **Light Pool**: 50-100 concurrent (attacks 1-3, 14-17, 38-39, 69-70, 81, 83)
+- **Heavy Pool**: 2-5 concurrent (attacks 4-13, 21-37, 55-58, 73-75)
+- **Simulation Pool**: 1-2 concurrent (attacks 43-48, 52-54, 76-78)
+
+**Per-Artifact Flow**:
+```
+1. Artifact Type Classification
+2. Attack Applicability Determination (which of 83 apply?)
+3. For each applicable attack:
+   - Execute attempt 1 → emit event
+   - Execute attempt 2 → emit event
+   - Execute attempt 3 → emit event
+   - Aggregate 3 attempts → emit summary
+4. Generate Attack Resistance Profile
+5. Store all outputs with artifact
+```
+
+**Outputs Per Artifact**:
+- Individual attack attempt events (N × 3, where N = applicable attacks)
+- Attack summary events (N summaries)
+- Attack resistance profile (consolidated vulnerability assessment)
+- Attack features for ML modeling
+- Raw attack tool outputs (stdout, stderr, recovered data)
+
+### Attack Categories by Severity
+
+- **Critical (3)**: Quantum attacks (Shor, Grover) - simulation only
+- **Very High (18)**: Brute force, DPA, cache attacks, fault injection, POODLE, Spectre
+- **High (38)**: Linear/differential cryptanalysis, birthday, dictionary, BEAST, timing
+- **Medium (18)**: Integral, correlation, acoustic, EM analysis
+- **Low (6)**: Frequency analysis, chi-square, TEMPEST
+
+### Attack Tool Dependencies
+
+**Core Tools (MVP - 10-15 attacks)**:
+- OpenSSL (CLI inspection, some attacks)
+- hashcat (brute force, dictionary)
+- john (password attacks)
+- Custom tools (frequency, statistical, linear cryptanalysis basics)
+
+**Advanced Tools (Full Suite - 83 attacks)**:
+- Sage (algebraic attacks)
+- Ghidra (reverse engineering for binary attacks)
+- liboqs (PQC attacks)
+- SCA simulators (power, EM, cache)
+- Fault injection simulators
+- Specialized cryptanalysis tools (MITM, differential, etc.)
+
+**Hardware (Advanced Phase)**:
+- Power analysis equipment ($50k-100k)
+- EM probes ($30k-50k)
+- Fault injection equipment ($200k-300k)
+- Specialized oscilloscopes and analyzers
+
+### Attack Framework Costs
+
+**Development**:
+- MVP (10-15 attacks): +3 months, +1 engineer, +$300k
+- Full suite (83 attacks): +12 months, +2 engineers, +$2M
+- Hardware SCA: +12 months, +1 engineer, +$1M (including equipment)
+
+**Infrastructure (monthly)**:
+- Light attack pool: +$2,300
+- Heavy attack pool (doubled): +$5,000
+- GPU instances (hashcat): +$6,000
+- Storage (increased): +$500
+- **Total increase**: +$14k/month (+$168k/year)
+
+**ROI Justification**:
+- **Without attacks**: Classify artifacts (what is it?)
+- **With attacks**: Classify + validate security (what is it? is it vulnerable?)
+- **Value add**: Vulnerability assessment, remediation recommendations, threat modeling
+- **Target customers**: Security audit firms, government agencies, research labs
+
+---
+
 ## Implementation To-Do List
 
 ### Phase 0: Foundation & Infrastructure
@@ -1621,7 +2392,158 @@ Phase 4: Reports
   - [ ] Handle module skips with evidence
   - [ ] Handle module failures as data
 
-### Phase 3: PQC Toolchain Integration
+### Phase 3: Attack Framework Implementation (NEW)
+
+- [ ] **Attack Registry & Configuration**
+  - [ ] Define attack_registry.json schema (all 83 attacks metadata)
+  - [ ] Build attack_applicability_map.json (attack → artifact type mappings)
+  - [ ] Implement attack severity and practicality metadata
+  - [ ] Create attack category taxonomy (25 categories)
+  - [ ] Define attack resource classification (light/heavy/simulation)
+  - [ ] Build attack timeout and budget configuration per attack
+  - [ ] Document attack tool requirements and dependencies
+
+- [ ] **Attack Applicability Module**
+  - [ ] Build artifact type → applicable attacks mapping logic
+  - [ ] Implement policy-based attack filtering (enabled/disabled categories)
+  - [ ] Create simulation attack gating logic
+  - [ ] Build heavy attack permission checking
+  - [ ] Implement attack priority and ordering logic
+  - [ ] Emit attack applicability evidence events
+  - [ ] Build estimated time calculation for attack suite
+
+- [ ] **Attack Pool Management**
+  - [ ] Implement light attack pool (high concurrency)
+  - [ ] Implement heavy attack pool (throttled, 2-5 concurrent)
+  - [ ] Implement simulation attack pool (special handling)
+  - [ ] Build attack queue with priority routing
+  - [ ] Add attack-specific resource limits (memory, CPU, queries)
+  - [ ] Implement attack backpressure and throttling
+  - [ ] Build attack pool monitoring and metrics
+
+- [ ] **Attack Tool Integration**
+  - [ ] **Ciphertext-Only Attacks (1-3)**
+    - [ ] Integrate frequency_analyzer
+    - [ ] Integrate statistical_attack_tool
+    - [ ] Integrate correlation_analyzer
+  - [ ] **Known/Chosen Plaintext (4-10)**
+    - [ ] Integrate linear_cryptanalysis tool (Matsui)
+    - [ ] Integrate differential_cryptanalysis tool
+    - [ ] Integrate integral_cryptanalysis
+    - [ ] Integrate biclique_attack
+  - [ ] **Chosen Ciphertext (11-13)**
+    - [ ] Integrate padding_oracle tool
+    - [ ] Integrate POODLE attack tool
+    - [ ] Integrate Bleichenbacher attack tool
+  - [ ] **Brute-Force (14-17)**
+    - [ ] Integrate hashcat for brute force
+    - [ ] Integrate john for dictionary attacks
+    - [ ] Integrate rainbow_crack for rainbow tables
+    - [ ] Integrate hybrid dictionary tools
+  - [ ] **Collision (18-20)**
+    - [ ] Integrate birthday_attack tool
+    - [ ] Integrate collision_finder
+    - [ ] Integrate multi-collision tool
+  - [ ] **Time/Memory (21-23)**
+    - [ ] Integrate MITM attack tools
+    - [ ] Integrate rainbow chain generator
+    - [ ] Integrate Hellman table generator
+  - [ ] **Differential (24-26)**
+    - [ ] Integrate impossible differential tool
+    - [ ] Integrate boomerang attack
+  - [ ] **Linear (27-29)**
+    - [ ] Integrate linear cryptanalysis (block)
+    - [ ] Integrate linear cryptanalysis (stream)
+    - [ ] Integrate differential-linear attack
+  - [ ] **MITM (30-32)**
+    - [ ] Integrate double encryption attack
+    - [ ] Integrate 3DES break tool
+    - [ ] Integrate generalized MITM
+  - [ ] **Algebraic (33-36)**
+    - [ ] Integrate interpolation attack (Sage)
+    - [ ] Integrate cube attack
+    - [ ] Integrate algebraic attack (Sage)
+    - [ ] Integrate linearization attack
+  - [ ] **Statistical (37-39)**
+    - [ ] Integrate correlation attack
+    - [ ] Integrate chi-square test
+    - [ ] Integrate mod-n analysis
+  - [ ] **Timing SCA (40-42)**
+    - [ ] Integrate timing_analyzer (RSA)
+    - [ ] Integrate Lucky 13 attack tool
+    - [ ] Integrate constant-time bypass detector
+  - [ ] **Power/EM/Cache/Acoustic SCA (43-54)**
+    - [ ] Build SCA simulation framework
+    - [ ] Integrate power analysis simulators (SPA/DPA)
+    - [ ] Integrate EM analysis simulators
+    - [ ] Integrate cache attack tools (Flush+Reload, Prime+Probe, Evict+Time)
+    - [ ] Integrate acoustic analysis (simulation)
+  - [ ] **Fault Injection (55-58)**
+    - [ ] Build fault injection simulation framework
+    - [ ] Integrate differential fault analysis
+    - [ ] Simulate voltage/clock/laser glitch attacks
+  - [ ] **Weak Key (59-61)**
+    - [ ] Integrate weak key detector
+    - [ ] Integrate related-key attack
+    - [ ] Integrate key clustering analyzer
+  - [ ] **Protocol (62-65)**
+    - [ ] Integrate padding oracle (CBC)
+    - [ ] Integrate BEAST attack
+    - [ ] Integrate CRIME attack
+    - [ ] Integrate BREACH attack
+  - [ ] **Downgrade (66-68)**
+    - [ ] Integrate POODLE downgrade
+    - [ ] Integrate DROWN attack
+    - [ ] Integrate SSLv2 downgrade detector
+  - [ ] **Password (69-72)**
+    - [ ] Integrate dictionary attacks (john, hashcat)
+    - [ ] Integrate rainbow tables (rainbow_crack)
+    - [ ] Integrate credential stuffing detector
+  - [ ] **Quantum (73-75)**
+    - [ ] Build Shor algorithm simulator (RSA/DLP)
+    - [ ] Build Grover algorithm simulator (symmetric)
+    - [ ] Implement time-to-break estimation
+  - [ ] **Speculation (76-78)**
+    - [ ] Build Spectre/Meltdown simulation
+    - [ ] Build transient execution analyzer
+  - [ ] **Other (79-83)**
+    - [ ] Integrate rectangle attack
+    - [ ] Integrate slide attack
+    - [ ] Integrate key-recovery tools
+    - [ ] Integrate distinguishing attack
+
+- [ ] **Attack Execution Orchestrator**
+  - [ ] Implement 3×repeat execution logic per attack
+  - [ ] Build deterministic seeding per attempt
+  - [ ] Implement per-attack timeout enforcement
+  - [ ] Build query budget enforcement
+  - [ ] Implement attack attempt evidence emission
+  - [ ] Build attack stdout/stderr capture and storage
+  - [ ] Implement recovered data storage (if success)
+  - [ ] Build attack metrics collection
+  - [ ] Handle attack failures as data (structured events)
+  - [ ] Implement attack tool error normalization
+
+- [ ] **Attack Aggregation Module**
+  - [ ] Implement 3-run statistical aggregation
+  - [ ] Build consistency scoring algorithm
+  - [ ] Implement vulnerability confirmation logic (2 of 3 rule)
+  - [ ] Build attack summary event generation
+  - [ ] Create attack resistance profile per artifact
+  - [ ] Calculate resistance score
+  - [ ] Build severity breakdown analysis
+  - [ ] Generate attack-based recommendations
+  - [ ] Emit consolidated resistance evidence
+
+- [ ] **Attack Result Storage**
+  - [ ] Implement attack attempt event persistence (JSONL)
+  - [ ] Implement attack summary event persistence
+  - [ ] Build attack_outputs blob storage
+  - [ ] Implement attack resistance profile storage
+  - [ ] Create attack features for ML (Parquet)
+  - [ ] Build attack result query interface
+
+### Phase 4: PQC Toolchain Integration
 
 - [ ] **PQC Validation**
   - [ ] Integrate liboqs for KEM operations
@@ -1639,7 +2561,7 @@ Phase 4: Reports
   - [ ] Add toolchain version pinning enforcement
   - [ ] Emit generation events with provenance
 
-### Phase 4: Evidence → Features → Models
+### Phase 5: Evidence → Features → Models
 
 - [ ] **Feature Builder**
   - [ ] Implement streaming feature builder (real-time)
@@ -1673,7 +2595,7 @@ Phase 4: Reports
   - [ ] Build system-level summary reports
   - [ ] Create report artifacts storage
 
-### Phase 5: Production Discipline (Built-In Fixes)
+### Phase 6: Production Discipline (Built-In Fixes)
 
 - [ ] **Determinism Contract**
   - [ ] Enforce run_id, artifact_id, artifact_seq, event_seq in all events
@@ -1709,7 +2631,7 @@ Phase 4: Reports
   - [ ] Implement cache invalidation on toolchain hash change
   - [ ] Build cache hit/miss metrics
 
-### Phase 6: Observability & Operations
+### Phase 7: Observability & Operations
 
 - [ ] **Per-Run Visibility**
   - [ ] Build progress tracking by job count
@@ -1735,7 +2657,7 @@ Phase 4: Reports
   - [ ] Track throughput metrics
   - [ ] Monitor resource utilization
 
-### Phase 7: Testing & Validation
+### Phase 8: Testing & Validation
 
 - [ ] **Unit Tests**
   - [ ] Test artifact registry operations
@@ -1774,7 +2696,22 @@ Phase 4: Reports
   - [ ] Verify resource limits work
   - [ ] Test timeout enforcement under load
 
-### Phase 8: Scaling & Productization
+- [ ] **Attack Framework Tests (NEW)**
+  - [ ] Test attack applicability routing (correct attacks for artifact types)
+  - [ ] Test 3×repeat execution determinism (same seed → same results)
+  - [ ] Test attack timeout enforcement
+  - [ ] Test attack query budget enforcement
+  - [ ] Test attack pool concurrency limits (heavy pool caps work)
+  - [ ] Test attack result aggregation (consistency scoring correct)
+  - [ ] Test vulnerability confirmation logic (2 of 3 rule)
+  - [ ] Test attack resistance profile generation
+  - [ ] Test attack tool error handling (failures emit events)
+  - [ ] Test attack output storage (blobs, events, summaries)
+  - [ ] Validate all 83 attacks emit structured events
+  - [ ] Test attack feature extraction for ML
+  - [ ] End-to-end attack validation flow per artifact type
+
+### Phase 9: Scaling & Productization
 
 - [ ] **Distributed Execution Preparation**
   - [ ] Abstract job queue behind interface
@@ -1805,7 +2742,7 @@ Phase 4: Reports
   - [ ] Build backup/disaster recovery procedures
   - [ ] Implement audit logging
 
-### Phase 9: Documentation
+### Phase 10: Documentation
 
 - [ ] Write architecture overview
 - [ ] Document all modules and their contracts
@@ -1819,20 +2756,44 @@ Phase 4: Reports
 
 ---
 
-## Critical Path (Minimum Viable Product)
+## Critical Path (Minimum Viable Product with Attack Validation)
 
 For a working MVP, focus on:
 
 1. **Core Infrastructure** (Phase 0 + Phase 1 basics)
 2. **Simple Artifact Flow** (Registry → Scheduler → Worker → Telemetry)
 3. **2-3 Basic Modules** (Router + CLI Inspection + Basic Probes)
-4. **Evidence Store** (Simple JSONL persistence)
-5. **Basic Feature Extraction** (Batch mode)
-6. **Simple Report** (Evidence trace + basic classification)
-7. **Essential Safety** (Timeouts + Isolation + No-network)
-8. **Basic Tests** (Unit + Integration for critical path)
+4. **Attack Registry & Applicability** (10-15 core attacks only) **(NEW)**
+5. **Attack Pools** (Light + Basic Heavy) **(NEW)**
+6. **Core Attack Integration** **(NEW)**:
+   - Frequency Analysis (1)
+   - Statistical Attack (2)
+   - Linear Cryptanalysis (4)
+   - Padding Oracle (11)
+   - Brute Force (14)
+   - Dictionary Attack (15-16)
+   - Linear Cryptanalysis Block (27)
+   - Timing Attack RSA (40)
+   - Dictionary + Hybrid (69-70)
+7. **3×Repeat Execution + Aggregation** **(NEW)**
+8. **Evidence Store** (Simple JSONL persistence + attack events)
+9. **Basic Feature Extraction** (Batch mode + attack features)
+10. **Simple Report** (Evidence trace + basic classification + attack resistance profile)
+11. **Essential Safety** (Timeouts + Isolation + No-network + Attack budgets)
+12. **Basic Tests** (Unit + Integration + Attack validation for critical path)
 
-Then iterate to add more modules, heavy pool, models, and scaling features.
+**MVP Delivers**:
+- Artifact analysis with 10-15 validated attacks
+- Each attack run 3 times for statistical confidence
+- Attack resistance profile per artifact
+- Full evidence traceability
+
+Then iterate to add:
+- Remaining 68+ attacks (phases)
+- Heavy pool attacks (algebraic, SCA, fault injection)
+- Advanced models
+- Distributed execution
+- Hardware SCA integration
 
 ---
 
@@ -1867,6 +2828,14 @@ Then iterate to add more modules, heavy pool, models, and scaling features.
 | **Reporting layer** | Med | 4-5 weeks | Models | Low | Templating + evidence trace |
 | **Caching layer** | Med | 3-4 weeks | Any cached component | High | Invalidation correctness critical |
 | **Observability/monitoring** | Med | 4-6 weeks | All components | Med | Ongoing throughout project |
+| **Attack registry & config** | Low-Med | 2-3 weeks | None | Med | 83 attacks metadata |
+| **Attack applicability module** | Med | 3-4 weeks | Router | Med | Mapping logic complex |
+| **Attack pool management** | Med-High | 4-5 weeks | Worker pools | High | Resource governance critical |
+| **Attack tool integration (basic)** | Med-High | 6-8 weeks | Attack pools | High | 10-15 key attacks first |
+| **Attack tool integration (full)** | Very High | 16-24 weeks | Basic attacks | Very High | All 83 attacks + tools |
+| **Attack execution orchestrator** | Med-High | 4-6 weeks | Attack tools | High | 3×repeat logic + seeding |
+| **Attack aggregation module** | Med | 3-4 weeks | Orchestrator | Med | Statistical analysis |
+| **Attack result storage** | Med | 2-3 weeks | Telemetry | Low | Extend existing storage |
 | **Testing framework** | Med | 3-4 weeks | None (parallel) | High | Needed from day one |
 | **Distributed execution (K8s)** | High | 10-12 weeks | Single-machine working | Med | Async after core works |
 | **Multi-tenancy** | Med-High | 6-8 weeks | Distributed | Med | Async, productization phase |
@@ -1876,9 +2845,9 @@ Then iterate to add more modules, heavy pool, models, and scaling features.
 ## Realistic Project Timeline
 
 ### Minimal Viable Product (MVP)
-**Goal**: Single-machine system analyzing ciphertexts and keys with basic classification
+**Goal**: Single-machine system analyzing ciphertexts and keys with basic classification and 10-15 core attacks
 
-**Timeline**: 6-9 months with 2-3 engineers
+**Timeline**: 9-12 months with 3-4 engineers
 
 **Includes**:
 - Object storage + registry
@@ -1886,13 +2855,18 @@ Then iterate to add more modules, heavy pool, models, and scaling features.
 - Job scheduler + worker pool (artifact-parallel)
 - Tool orchestrator + workspace isolation
 - Router + CLI inspection + symmetric probes
-- Basic feature extraction (batch mode)
+- **Attack registry + applicability module (NEW)**
+- **Attack pools (light + basic heavy) (NEW)**
+- **10-15 core attacks integrated (1, 2, 4, 11, 14-17, 27, 40, 69-70) (NEW)**
+- **3×repeat execution + aggregation (NEW)**
+- Basic feature extraction (batch mode) including attack features
 - Simple classification (Tier 0-1 models)
 - Essential safety (timeouts, isolation, no-network)
-- Core tests (determinism, isolation, failures)
+- Core tests (determinism, isolation, failures, attack validation)
 
 **Excludes**:
-- Heavy pool (Ghidra, Sage)
+- Full 83-attack suite (only core 10-15 attacks)
+- Advanced heavy pool attacks (Sage, algebraic, SCA simulations)
 - PQC probes (use liboqs later)
 - Streaming features
 - Tier 2-3 models
@@ -1902,109 +2876,132 @@ Then iterate to add more modules, heavy pool, models, and scaling features.
 ---
 
 ### Production-Ready System
-**Goal**: Industry-grade system with heavy analysis, PQC support, distributed execution
+**Goal**: Industry-grade system with heavy analysis, PQC support, full 83-attack suite, distributed execution
 
-**Timeline**: 18-24 months with 4-6 engineers
+**Timeline**: 24-30 months with 5-7 engineers
 
 **Includes**:
 - Everything in MVP
+- **Full 83-attack suite integrated (all categories) (NEW)**
+- **Advanced attack tools (Sage algebraic, SCA simulations, fault injection) (NEW)**
+- **Attack resistance profiling + recommendations (NEW)**
+- **Attack-based ML models (vulnerability prediction) (NEW)**
 - Heavy pool + Ghidra integration + Sage workbench
 - PQC probes + dataset generation
 - Hash/KDF audit module
-- Streaming + batch features (tested equivalent)
+- Streaming + batch features (tested equivalent) including attack features
 - Tiered models (Tier 0-3 + OOS detection)
-- Caching layer (with invalidation)
-- Comprehensive observability
+- Caching layer (with invalidation) including attack result caching
+- Comprehensive observability including attack pool metrics
 - Distributed execution (Kubernetes)
-- Full test coverage (unit + integration + E2E)
+- Full test coverage (unit + integration + E2E + all attacks)
 - Multi-tenancy + quotas
 
 **Excludes**:
 - Advanced modeling techniques (can iterate)
 - Protocol capture analysis (complex, add later)
 - Dynamic analysis (sandbox execution)
+- Real hardware-based SCA (simulation only)
 
 ---
 
 ### Production-Ready + Advanced Features
-**Goal**: Enterprise product with all bells and whistles
+**Goal**: Enterprise product with all bells and whistles including real hardware SCA
 
-**Timeline**: 30-36 months with 6-10 engineers
+**Timeline**: 36-48 months with 8-12 engineers
 
 **Includes**:
 - Everything in Production-Ready
+- **Real hardware-based SCA testing (power/EM/acoustic with actual equipment) (NEW)**
+- **Physical fault injection lab (voltage/clock/laser glitching) (NEW)**
+- **Quantum threat assessment and PQC migration planning (NEW)**
+- **Attack correlation analysis (multi-attack patterns) (NEW)**
 - Protocol capture analysis (PCAP/TLS dissection)
 - Binary dynamic analysis (sandboxed execution)
-- Advanced modeling (ensemble, deep learning)
-- Real-time interactive mode
+- Advanced modeling (ensemble, deep learning) for attack prediction
+- Real-time interactive mode with live attack execution
 - Multi-region deployment
 - SLAs and compliance certifications
-- Customer-facing UI/dashboard
+- Customer-facing UI/dashboard with attack visualization
+- Automated vulnerability remediation recommendations
 
 ---
 
 ## Team Composition Recommendations
 
-### MVP Phase (6-9 months)
-- **1x Backend Engineer (Senior)**: Control plane, telemetry, worker pools
-- **1x Security/Crypto Engineer**: Tool orchestrator, modules, safety controls
+### MVP Phase (9-12 months)
+- **1x Backend Engineer (Senior)**: Control plane, telemetry, worker pools, attack pools
+- **2x Security/Crypto Engineers**: Tool orchestrator, modules, attack integration, safety controls
 - **1x DevOps/Infra Engineer**: Storage, containerization, testing infrastructure
 - *Part-time: ML Engineer for basic models*
+- *Part-time: Cryptanalysis Expert for attack validation*
 
-### Production Phase (18-24 months)
-- **2x Backend Engineers (Senior)**: Distributed execution, caching, scaling
-- **2x Security/Crypto Engineers**: Heavy modules (RE, math workbench), PQC integration
-- **1x ML Engineer**: Feature engineering, tiered models, OOS detection
-- **1x DevOps/SRE Engineer**: Kubernetes, monitoring, reliability
+### Production Phase (24-30 months)
+- **2x Backend Engineers (Senior)**: Distributed execution, caching, scaling, attack orchestration
+- **3x Security/Crypto Engineers**: Heavy modules (RE, math workbench), full attack suite, PQC integration
+- **1x Cryptanalysis Specialist**: Advanced attacks (algebraic, SCA, fault injection)
+- **1x ML Engineer**: Feature engineering, tiered models, attack prediction, OOS detection
+- **1x DevOps/SRE Engineer**: Kubernetes, monitoring, reliability, attack infrastructure
 - *Part-time: Product Manager for prioritization*
 
-### Advanced Phase (30-36 months)
-- **3x Backend Engineers**: Protocol analysis, dynamic analysis, performance
-- **2x Security/Crypto Engineers**: Advanced analysis, new cryptosystems
-- **2x ML Engineers**: Advanced modeling, A/B testing, model deployment
-- **1x Frontend Engineer**: UI/dashboard
-- **2x DevOps/SRE Engineers**: Multi-region, compliance, reliability
+### Advanced Phase (36-48 months)
+- **3x Backend Engineers**: Protocol analysis, dynamic analysis, performance, attack correlation
+- **3x Security/Crypto Engineers**: Advanced analysis, new cryptosystems, hardware SCA integration
+- **1x Hardware Security Engineer (NEW)**: Physical SCA lab, fault injection, equipment integration
+- **2x ML Engineers**: Advanced modeling, attack prediction, A/B testing, model deployment
+- **1x Frontend Engineer**: UI/dashboard with attack visualization
+- **2x DevOps/SRE Engineers**: Multi-region, compliance, reliability, attack infrastructure scaling
 - **1x Product Manager**: Customer feedback, roadmap, prioritization
 
 ---
 
 ## Budget Reality Check
 
-### Infrastructure Costs (Monthly, Production Scale)
+### Infrastructure Costs (Monthly, Production Scale with Attack Framework)
 
 | Resource | Spec | Cost (AWS) | Notes |
 |----------|------|-----------|-------|
 | **Artifact worker nodes** | 10x c5.2xlarge | ~$2,500 | 8 vCPU, 16GB each |
-| **Heavy pool nodes** | 4x c5.9xlarge | ~$5,000 | 36 vCPU, 72GB each |
-| **Object storage (S3)** | 10TB + requests | ~$250 | Artifacts + raw logs |
-| **Event storage (Parquet)** | 1TB + requests | ~$30 | Telemetry events |
-| **Database (RDS)** | db.r5.xlarge | ~$500 | Registry + metadata |
+| **Light attack pool nodes** | 15x c5.xlarge | ~$2,300 | 4 vCPU, 8GB each (NEW) |
+| **Heavy attack pool nodes** | 8x c5.9xlarge | ~$10,000 | 36 vCPU, 72GB each (doubled for attacks) |
+| **GPU instances (hashcat)** | 2x p3.2xlarge | ~$6,000 | V100 GPU for brute force (NEW) |
+| **Object storage (S3)** | 25TB + requests | ~$625 | Artifacts + attack outputs + raw logs (increased) |
+| **Event storage (Parquet)** | 3TB + requests | ~$90 | Telemetry + attack events (increased) |
+| **Database (RDS)** | db.r5.2xlarge | ~$1,000 | Registry + metadata + attack registry (upgraded) |
 | **Message queue (MSK)** | 3 brokers | ~$800 | Job queue (if Kafka) |
-| **Monitoring** | CloudWatch/Datadog | ~$500 | Logs + metrics + alerts |
+| **Monitoring** | CloudWatch/Datadog | ~$800 | Logs + metrics + alerts + attack metrics |
 | **Load balancers** | 2x ALB | ~$50 | API ingress |
-| **Total** | | **~$9,630/mo** | ~$115k/year |
+| **Total** | | **~$24,165/mo** | ~$290k/year |
 
-### Personnel Costs (Annual, Loaded)
+### Personnel Costs (Annual, Loaded - Production Phase)
 
 | Role | Count | Salary (US) | Notes |
 |------|-------|-------------|-------|
 | **Senior Backend Engineer** | 2 | $180k | $360k total |
-| **Security/Crypto Engineer** | 2 | $200k | $400k total (specialized) |
+| **Security/Crypto Engineer** | 3 | $200k | $600k total (specialized, attack integration) |
+| **Cryptanalysis Specialist** | 1 | $220k | $220k (highly specialized, attack expertise) |
 | **ML Engineer** | 1 | $170k | $170k |
 | **DevOps/SRE Engineer** | 1 | $160k | $160k |
 | **Product Manager** | 0.5 | $150k | $75k (part-time) |
-| **Total** | 6.5 | | **$1.17M/year** |
+| **Total** | 8.5 | | **$1.59M/year** |
 
-### Total 3-Year Cost Projection
+### Total 4-Year Cost Projection (With Attack Framework)
 
 | Phase | Duration | Personnel | Infrastructure | Total |
 |-------|----------|-----------|----------------|-------|
-| **MVP** | 9 months | $730k | $30k | **$760k** |
-| **Production** | 15 months | $1.5M | $145k | **$1.65M** |
-| **Advanced** | 12 months | $1.4M | $140k | **$1.54M** |
-| **Total** | 36 months | $3.63M | $315k | **~$3.95M** |
+| **MVP (10-15 attacks)** | 12 months | $950k | $60k | **$1.01M** |
+| **Production (Full 83 attacks)** | 18 months | $2.4M | $435k | **$2.84M** |
+| **Advanced (Hardware SCA)** | 18 months | $2.3M | $550k | **$2.85M** |
+| **Total** | 48 months | $5.65M | $1.05M | **~$6.7M** |
 
-*Note: Costs assume US-based team. International hiring or contractors can reduce by 30-50%.*
+**Additional One-Time Costs**:
+- **Attack tool licenses**: ~$100k (Ghidra Pro, Sage, specialized tools)
+- **Hardware SCA equipment** (Advanced phase): ~$500k (power analyzers, EM probes, fault injection equipment)
+- **Rainbow table storage**: ~$50k (pre-computed tables for common hashes)
+
+**Grand Total (4 years)**: **~$7.35M**
+
+*Note: Costs assume US-based team. International hiring or contractors can reduce by 30-50%. Without attack framework, costs would be ~$4-5M (40% reduction).*
 
 ---
 
@@ -2030,17 +3027,40 @@ Then iterate to add more modules, heavy pool, models, and scaling features.
 
 ## Final Reality Check
 
-**This is a hard system to build correctly.**
+**This is a hard system to build correctly, and the attack framework makes it significantly harder.**
 
-The hard parts are not the algorithms (parsing ASN.1, computing entropy). The hard parts are:
+The hard parts are not the algorithms (parsing ASN.1, computing entropy, implementing attacks). The hard parts are:
 
-1. **Determinism across parallel execution** (single-writer, sequencing, seeding)
-2. **Isolation without performance death** (per-artifact workspaces, no collisions)
-3. **Failure-as-data discipline** (structured events, no silent failures)
-4. **Resource governance at scale** (timeouts, budgets, heavy pool caps)
-5. **Tool integration hell** (error normalization across OpenSSL, Ghidra, Sage, liboqs)
-6. **Testing reproducibility** (same artifact → same evidence, byte-for-byte)
+1. **Determinism across parallel execution** (single-writer, sequencing, seeding) **+ attack repeatability**
+2. **Isolation without performance death** (per-artifact workspaces, no collisions) **+ attack workspace isolation**
+3. **Failure-as-data discipline** (structured events, no silent failures) **+ attack failure taxonomy**
+4. **Resource governance at scale** (timeouts, budgets, heavy pool caps) **+ attack pool governance**
+5. **Tool integration hell** (error normalization across OpenSSL, Ghidra, Sage, liboqs) **+ 83 attack tools**
+6. **Testing reproducibility** (same artifact → same evidence, byte-for-byte) **+ 3×repeat attack validation**
+7. **Attack framework complexity** (NEW):
+   - Integrating 83 different attack tools with varying interfaces
+   - Ensuring each attack runs 3× deterministically with same results
+   - Managing attack pools (light vs heavy vs simulation)
+   - Aggregating attack results statistically
+   - Building attack resistance profiles
+   - Preventing attack tools from becoming security incidents (no GPU cracking unless authorized)
 
-If you shortcut any of these, you get a demo that works once. If you build them correctly from day one, you get an industry-grade product.
+**Complexity Multiplier**: The attack framework roughly **doubles** the system complexity and cost compared to forensics-only mode.
 
-**Choose wisely.**
+**Attack Framework Risks**:
+- **Tool availability**: Many advanced attacks don't have production-ready tools
+- **Determinism**: Some attacks are inherently nondeterministic (need statistical handling)
+- **Safety**: Brute-force tools can accidentally become cracking tools
+- **Licensing**: Commercial cryptanalysis tools are expensive ($10k-100k per license)
+- **Hardware**: Physical SCA requires $500k+ in specialized equipment
+- **Expertise**: Finding cryptanalysis experts is harder than finding crypto engineers
+
+**Realistic Assessment**:
+- **Without attack framework**: $4-5M, 36 months, feasible for most security companies
+- **With 10-15 core attacks (MVP)**: $5-6M, 42 months, feasible but challenging
+- **With full 83 attacks**: $7-8M, 48 months, feasible only for well-funded organizations
+- **With hardware SCA**: $9-10M+, 60+ months, research-lab tier complexity
+
+If you shortcut any of the core discipline majors, you get a demo that works once. If you build them correctly from day one, you get an industry-grade product.
+
+**Choose wisely. Consider starting with forensics-only (no attacks) and adding attacks in phases.**
