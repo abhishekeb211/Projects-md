@@ -2,11 +2,31 @@
 
 This document is an ordered concatenation of the phase documents in `ISRO_Meghalay/`, from Phase 0 through Phase 7.
 
+## Index
+
+- [Phase 0 — Initialize](#phase-0)
+- [Phase 1 — Idea Refinement](#phase-1)
+- [Phase 1.5 — Lock Decisions](#phase-1-5)
+- [Phase 2a — SLR Protocol](#phase-2a)
+- [Phase 2b — Literature Cards](#phase-2b)
+- [Phase 2c — Synthesis & Gap Confirmation](#phase-2c)
+- [Phase 3 — Technical Deep Dive](#phase-3)
+- [Phase 4 — Section Drafts](#phase-4)
+- [Phase 5 — Manuscript Generation](#phase-5)
+- [Phase 6 — Rigor & Reviewer Simulation](#phase-6)
+- [Phase 7 — Submission Preparation](#phase-7)
+
+## Formatting conventions (for consistent rendering)
+
+- **Headings**: This combined document uses one top title and then phase titles for navigation.
+- **Checklists**: Items like `- [ ]` are open tasks; `- [x]` indicates completion.
+- **Placeholders**: Bracketed placeholders like `[DOI]`, `[Link]`, `\todo{...}`, and `\result{...}` are intended to be filled before submission.
+
 ---
 
-## Source: `Phase_0_Initialize.md`
-
+<a id="phase-0"></a>
 # PHASE 0: Initialize – Research Ledger Setup
+> Source: `Phase_0_Initialize.md`
 
 ## Project Metadata
 
@@ -147,9 +167,9 @@ Key deliverables include: species distribution maps, canopy health assessment pr
 
 ---
 
-## Source: `Phase_1_Idea_Refinement.md`
-
+<a id="phase-1"></a>
 # PHASE 1: Idea Refinement & Research Foundation
+> Source: `Phase_1_Idea_Refinement.md`
 
 ## 1. Idea Deconstruction
 
@@ -470,9 +490,9 @@ APPENDIX
 
 ---
 
-## Source: `Phase_1.5_Lock_Decisions.md`
-
+<a id="phase-1-5"></a>
 # PHASE 1.5: Lock Decisions
+> Source: `Phase_1.5_Lock_Decisions.md`
 
 ## Pre-Phase 2 Decision Requirements
 
@@ -666,9 +686,9 @@ With these decisions locked, the SLR can now focus on:
 
 ---
 
-## Source: `Phase_2a_SLR_Protocol.md`
-
+<a id="phase-2a"></a>
 # PHASE 2a: Systematic Literature Review (SLR) Protocol
+> Source: `Phase_2a_SLR_Protocol.md`
 
 ## A. SLR Protocol Definition
 
@@ -987,9 +1007,9 @@ For each included paper, assess:
 
 ---
 
-## Source: `Phase_2b_Literature_Cards.md`
-
+<a id="phase-2b"></a>
 # PHASE 2b: Literature Cards
+> Source: `Phase_2b_Literature_Cards.md`
 
 ## Overview
 
@@ -1622,9 +1642,9 @@ This phase presents structured "paper cards" for key literature across the six t
 
 ---
 
-## Source: `Phase_2c_Synthesis_Gap_Confirmation.md`
-
+<a id="phase-2c"></a>
 # PHASE 2c: Synthesis & Gap Confirmation
+> Source: `Phase_2c_Synthesis_Gap_Confirmation.md`
 
 ## 1. Literature Synthesis
 
@@ -2113,9 +2133,9 @@ The proposed research directly supports ISRO's Space Vision 2047 objectives for:
 
 ---
 
-## Source: `Phase_3_Technical_Deep_Dive.md`
-
+<a id="phase-3"></a>
 # PHASE 3: Technical Deep Dive
+> Source: `Phase_3_Technical_Deep_Dive.md`
 
 ## 1. Formal Terms and Notation
 
@@ -3078,9 +3098,9 @@ where $n_{01}$ = samples correct by baseline, wrong by HyLiFormer
 
 ---
 
-## Source: `Phase_4_Section_Drafts.md`
-
+<a id="phase-4"></a>
 # PHASE 4: Section-by-Section Drafts
+> Source: `Phase_4_Section_Drafts.md`
 
 ## Paper Metadata
 
@@ -3649,9 +3669,9 @@ Future work will extend the framework to: (1) multi-temporal analysis incorporat
 
 ---
 
-## Source: `Phase_5_Manuscript_Generation.md`
-
+<a id="phase-5"></a>
 # PHASE 5: Manuscript Generation
+> Source: `Phase_5_Manuscript_Generation.md`
 
 ## Document Metadata
 
@@ -4241,9 +4261,9 @@ The proposed research directly supports ISRO's Space Vision 2047 objectives for:
 
 ---
 
-## Source: `Phase_6_Rigor_Review_Simulation.md`
-
+<a id="phase-6"></a>
 # PHASE 6: Rigor & Reviewer Simulation
+> Source: `Phase_6_Rigor_Review_Simulation.md`
 
 ## 1. Claim-Evidence Audit
 
@@ -4584,9 +4604,9 @@ The proposed research directly supports ISRO's Space Vision 2047 objectives for:
 
 ---
 
-## Source: `Phase_7_Submission_Preparation.md`
-
+<a id="phase-7"></a>
 # PHASE 7: Submission Preparation
+> Source: `Phase_7_Submission_Preparation.md`
 
 ## 1. Venue Compliance Checklist
 
