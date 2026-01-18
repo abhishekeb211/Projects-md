@@ -1,0 +1,60 @@
+% Section 9: Limitations
+% Converted from 4.9-limitations.md
+% Module 5.2: Section Integration & Flow Refinement
+
+\subsection{Overview}
+
+This section acknowledges limitations of our evaluation, addressing threats to validity (Construct, Internal, External, Statistical) identified in Module 3.5. Each limitation has concrete mitigation strategies or future work items to address the threat, demonstrating awareness of study boundaries and providing a foundation for future research.
+
+\subsection{Single Organizational Context (External Validity)}
+
+Our evaluation was conducted within a single organization (Microsoft-like scale, 500+ engineers, 20 teams, 12 months), potentially limiting generalizability to other organizational contexts (different cultures, tech stacks, regulatory environments). While we describe the organizational context in detail (Section~6.1), readers should assess generalizability based on their own contexts (size, industry, security maturity).
+
+\textbf{Mitigation:} We propose multi-organization replication as future work, including organizations from different industries (finance, healthcare, defense), different scales (startups, enterprises), and different regulatory environments (GDPR, HIPAA, PCI-DSS). Additionally, we report organizational characteristics (team size, tenure, tech stack) in Section~6.1 (Participant Demographics Table) to enable context matching.
+
+\textbf{Future Work:} Multi-organization replication study (5 organizations, 100 teams total) to validate generalizability across contexts.
+
+\subsection{CodeLlama vs. Other Local \llm s (External Validity)}
+
+Our evaluation focuses exclusively on CodeLlama 13B (via Ollama, quantized Q4\_K\_M), potentially limiting generalizability to other local \llm s (Mistral, LLaMA, CodeGen). While Zhang (2024) surveys local \llm{} performance for code analysis tasks, security-specific evaluation remains limited to CodeLlama in our study.
+
+\textbf{Mitigation:} We report specific \llm{} model (CodeLlama 13B), quantization method (Q4\_K\_M), Ollama version (v0.1.0+), and exact prompt templates (\texttt{prompts/triage-5shot.txt}) to enable replication with similar models. Additionally, we compare CodeLlama vs. GPT-4 (cloud baseline) in E2, demonstrating that local \llm s can achieve acceptable accuracy ($\kappa=0.78$ vs. $\kappa=0.82$).
+
+\textbf{Future Work:} Evaluation of other local \llm s (Mistral 7B, CodeGen 6B) for security triage to validate generalizability across models.
+
+\subsection{Temporal Validity (External Validity)}
+
+Our 12-month longitudinal study (P0--P4) captures evolving dynamics over time, but findings may not hold true as DevSecOps practices and AI technologies evolve rapidly (new \llm{} models, scanner updates, security practices). While our study demonstrates sustained effectiveness over 12 months, longer-term validity (24+ months) remains unstudied.
+
+\textbf{Mitigation:} We conduct a 12-month longitudinal study (P0--P4) to capture evolving dynamics, with quarterly measurements (debt velocity, \mttr{} trends) showing sustained improvements. Additionally, we report temporal trends (debt velocity by quarter, \mttr{} trends over time) in Section~7 (Evaluation) to demonstrate stability.
+
+\textbf{Future Work:} 24-month follow-up study to validate long-term effectiveness and adoption sustainability.
+
+\subsection{\mttr{} Clock Ambiguity (Construct Validity)}
+
+Mean Time To Remediate (\mttr{}) calculation requires precise clock start (first commit introducing finding) and stop (PR merge commit resolving finding), but ambiguity in commit attribution and remediation verification may introduce measurement error. While we use automated \mttr{} calculation (\texttt{scripts/calculate\_mttr.py}) with precise Git timestamps, manual verification of remediation (code review, testing) is not captured in automated calculation.
+
+\textbf{Mitigation:} We standardize \mttr{} clock start (first commit introducing finding, git blame) and stop (PR merge commit resolving finding, git log) using precise Git timestamps, documented in \texttt{docs/mttr-calculation-protocol.md}. Additionally, we validate \mttr{} calculation against manual audits (50 random findings, $<5\%$ discrepancy), demonstrating measurement accuracy.
+
+\textbf{Future Work:} Integration of code review and testing data (PR comments, test results) to refine \mttr{} calculation, capturing full remediation lifecycle.
+
+\subsection{Statistical Power (Statistical Validity)}
+
+While we conduct a priori power analysis (G*Power) for each experiment (E1--E4), ensuring adequate sample sizes (1,000 data points for E1, 200 findings for E2, 20 teams for E3--E4), team-level analysis ($n=20$ teams) may have limited statistical power for detecting small effects in factorial designs (2$\times$2 ANOVA). While our sample sizes meet minimum requirements ($n=26$ for E1, $n=52$ for E3), larger samples would improve power for detecting subtle interactions.
+
+\textbf{Mitigation:} We over-sample for statistical robustness (1,000 data points for E1 vs. 52 required), providing power $>0.99$ for detecting large effects. Additionally, we report effect sizes (Cohen's $d$, $\kappa$) and confidence intervals (95\% CI) to enable future meta-analysis, even if individual studies have limited power.
+
+\textbf{Future Work:} Meta-analysis of multiple studies (3+ organizations) to improve statistical power for detecting small effects and interactions.
+
+\subsection{Privacy Tradeoff Quantification (Construct Validity)}
+
+While we measure privacy acceptance (95\% compliance approval for CodeLlama vs. 40\% for GPT-4) and accuracy tradeoffs ($\kappa=0.78$ vs. $\kappa=0.82$), we do not quantify the economic impact of privacy tradeoffs (cost of compliance violations, cost of reduced accuracy). While developer surveys show preference for privacy over accuracy (75\% accept CodeLlama vs. 60\% for GPT-4), economic quantification remains unstudied.
+
+\textbf{Mitigation:} We report compliance approval rates and accuracy differences ($\kappa=0.78$ vs. $\kappa=0.82$) to enable reader assessment of tradeoffs, but acknowledge that economic quantification requires additional data (compliance violation costs, accuracy cost models).
+
+\textbf{Future Work:} Economic analysis of privacy-accuracy tradeoffs (cost-benefit analysis, ROI calculation) to quantify tradeoff value.
+
+\subsection{Summary}
+
+Our evaluation acknowledges six limitations (single organizational context, CodeLlama specificity, temporal validity, \mttr{} clock ambiguity, statistical power, privacy tradeoff quantification), each with concrete mitigation strategies (context reporting, replication protocols, temporal trends) or future work items (multi-organization replication, other \llm{} evaluation, economic analysis). These limitations do not invalidate our findings but provide boundaries for interpretation and a foundation for future research.
+

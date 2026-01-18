@@ -1,0 +1,268 @@
+% Algorithm Pseudocode & Complexity Analysis for AegisCLI
+% Module 3.3: Algorithm Pseudocode & Complexity Analysis
+% Phase: 3 - Technical Deep Dive & Evaluation Design
+
+\section{Core Algorithms}
+
+This section presents detailed pseudocode for three core algorithms in the AegisCLI system: Agentic Triage Orchestration, Policy Evaluation Engine, and Finding Deduplication. Each algorithm includes complexity analysis and failure mode handling.
+
+\subsection{Algorithm 1: Agentic Triage Orchestration}
+
+\textbf{Purpose:} Orchestrates LLM triage for security findings, enriching findings with confidence scores and severity annotations.
+
+\textbf{Input:}
+\begin{itemize}
+    \item $\text{findings}$: Array of SARIF result objects $[f_1, f_2, \ldots, f_n]$
+    \item $\pi$: Policy bundle containing OPA/Rego rules
+\end{itemize}
+
+\textbf{Output:}
+\begin{itemize}
+    \item $\text{annotated\_findings}$: Array of findings enriched with LLM annotations $[f'_1, f'_2, \ldots, f'_n]$
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Agentic Triage Orchestration}
+\begin{algorithmic}[1]
+\Require $\text{findings} \neq \emptyset$, $\pi \neq \emptyset$
+\Ensure $\text{annotated\_findings}$ with confidence scores and severity annotations
+
+\State $\text{deduplicated} \gets \text{DeduplicateFindings}(\text{findings})$ \Comment{Hash-based deduplication}
+\State $\text{annotated\_findings} \gets []$
+
+\For{each finding $f \in \text{deduplicated}$}
+    \State $\text{context} \gets \text{ExtractContext}(f)$ \Comment{Git blame, recent commits, policy decisions}
+    \State $\text{prompt} \gets \text{BuildPrompt}(f, \text{context}, \pi.\text{rules})$ \Comment{5-shot template}
+    
+    \Try
+        \State $\text{response} \gets \text{Ollama.Generate}(\text{prompt}, \text{``codellama:13b''}, \text{temperature}=0.2)$
+        \State $\text{parsed} \gets \text{ParseJSON}(\text{response})$ \Comment{$\{\text{severity}, \text{confidence}, \text{explanation}, \text{cwe\_mapping}\}$}
+        
+        \If{$\text{parsed}.\text{confidence} < 0.8$}
+            \State $f.\text{properties}[\text{``champion\_review''}] \gets \text{true}$ \Comment{Human-in-the-loop trigger}
+        \EndIf
+        
+        \State $f.\text{properties}[\text{``aegiscli:confidence''}] \gets \text{parsed}.\text{confidence}$
+        \State $f.\text{properties}[\text{``aegiscli:explanation''}] \gets \text{parsed}.\text{explanation}$
+        \State $f.\text{properties}[\text{``aegiscli:cwe\_mapping''}] \gets \text{parsed}.\text{cwe\_mapping}$
+        
+    \Catch{$\text{TimeoutError}$}
+        \State $f.\text{properties}[\text{``triage\_status''}] \gets \text{``fallback''}$ \Comment{Use original severity}
+        \State $\text{Log}(\text{``LLM timeout for finding''}, f.\text{ruleId})$
+    \Catch{$\text{ParseError}$}
+        \State $f.\text{properties}[\text{``triage\_status''}] \gets \text{``fallback''}$ \Comment{Retry once, then fallback}
+        \State $\text{Log}(\text{``JSON parse error for finding''}, f.\text{ruleId})$
+    \EndTry
+    
+    \State $\text{annotated\_findings}.\text{append}(f)$
+\EndFor
+
+\State $\text{SortBySeverity}(\text{annotated\_findings})$ \Comment{Sort by annotated severity (CRITICAL, HIGH, MEDIUM, LOW)}
+\State $\text{ExportToDashboard}(\text{annotated\_findings})$ \Comment{PostgreSQL insertion}
+
+\State \Return $\text{annotated\_findings}$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Complexity Analysis:}
+
+\begin{itemize}
+    \item \textbf{Time Complexity:} $O(n \times k)$ where:
+    \begin{itemize}
+        \item $n = |\text{findings}|$ (number of findings)
+        \item $k = \text{context\_fetch\_time} + \text{llm\_inference\_time}$
+        \item Context fetch: $O(1)$ per finding (cached Git blame)
+        \item LLM inference: $O(1)$ per finding (CodeLlama 13B, $\sim 5$s per finding on GPU)
+    \end{itemize}
+    Total: $O(n \times 5s) = O(n)$ amortized with parallel processing (goroutines)
+    
+    \item \textbf{Space Complexity:} $O(n \times m)$ where:
+    \begin{itemize}
+        \item $n = |\text{findings}|$
+        \item $m = \text{annotated\_metadata\_size}$ ($\sim 500$ bytes per finding: confidence, explanation, CWE mapping)
+    \end{itemize}
+    Total: $O(n)$ space for annotations
+    
+    \item \textbf{Failure Modes:}
+    \begin{enumerate}
+        \item \textbf{LLM Timeout:} Inference $>10$s → Fallback to original severity, flag for manual review
+        \item \textbf{Parse Error:} Invalid JSON response → Retry once, then fallback to original severity
+        \item \textbf{Low Confidence:} Confidence $<0.8$ → Flag for champion review, proceed with classification
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Algorithm 2: Policy Evaluation Engine}
+
+\textbf{Purpose:} Evaluates OPA/Rego policies against SARIF findings, returning allow/deny decisions with explanatory messages.
+
+\textbf{Input:}
+\begin{itemize}
+    \item $\text{findings}$: Array of SARIF result objects $[f_1, f_2, \ldots, f_n]$
+    \item $\text{bundle}$: OPA policy bundle containing Rego rules
+\end{itemize}
+
+\textbf{Output:}
+\begin{itemize}
+    \item $\text{evaluated\_findings}$: Array of findings with policy decisions $[f'_1, f'_2, \ldots, f'_n]$
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Policy Evaluation Engine}
+\begin{algorithmic}[1]
+\Require $\text{findings} \neq \emptyset$, $\text{bundle} \neq \emptyset$
+\Ensure $\text{evaluated\_findings}$ with policy decisions (allow/deny/warning)
+
+\State $\text{evaluated\_findings} \gets []$
+\State $\text{cache} \gets \text{RedisCache}$ \Comment{Policy decision cache (TTL: 24 hours)}
+
+\For{each finding $f \in \text{findings}$}
+    \State $\text{cache\_key} \gets \text{Hash}(f.\text{ruleId} + f.\text{location} + f.\text{severity})$
+    
+    \If{$\text{cache}.\text{exists}(\text{cache\_key})$}
+        \State $\text{decision} \gets \text{cache}.\text{get}(\text{cache\_key})$ \Comment{Cache hit: $O(1)$}
+    \Else
+        \State $\text{opa\_input} \gets \text{ConvertToOPAInput}(f)$ \Comment{Convert SARIF to OPA JSON}
+        
+        \Try
+            \State $\text{decision} \gets \text{OPA.Eval}(\text{bundle}, \text{opa\_input}, \text{``data.aegiscli.policies.allow''})$
+            \State $\text{cache}.\text{set}(\text{cache\_key}, \text{decision}, \text{TTL}=24\text{h})$ \Comment{Cache decision for future lookups}
+        \Catch{$\text{BundleLoadError}$}
+            \State $\text{decision} \gets \{\text{``result'': ``deny''}, \text{``msg'': ``Policy bundle load failure''}\}$ \Comment{Default deny}
+            \State $\text{Log}(\text{``OPA bundle load error''}, \text{bundle}.\text{path})$
+        \Catch{$\text{EvaluationTimeout}$}
+            \State $\text{decision} \gets \{\text{``result'': ``deny''}, \text{``msg'': ``Policy evaluation timeout''}\}$ \Comment{Default deny}
+            \State $\text{Log}(\text{``OPA evaluation timeout''}, f.\text{ruleId})$
+        \EndTry
+    \EndIf
+    
+    \State $f.\text{properties}[\text{``aegiscli:policyDecision''}] \gets \text{decision}.\text{result}$ \Comment{allow/deny/warning}
+    \State $f.\text{properties}[\text{``aegiscli:policyMessage''}] \gets \text{decision}.\text{msg}$
+    \State $\text{evaluated\_findings}.\text{append}(f)$
+\EndFor
+
+\State \Return $\text{evaluated\_findings}$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Complexity Analysis:}
+
+\begin{itemize}
+    \item \textbf{Time Complexity:} $O(n \times (p \times c + (1-p) \times e))$ where:
+    \begin{itemize}
+        \item $n = |\text{findings}|$
+        \item $p = \text{cache\_hit\_rate}$ (typically 0.8 for repeated findings)
+        \item $c = \text{cache\_lookup\_time} = O(1) = 5$ms (Redis)
+        \item $e = \text{opa\_evaluation\_time} = O(k)$ where $k$ = number of policy rules (typically $<100$ms for simple policies, $<500$ms for complex policies with 10+ rules)
+    \end{itemize}
+    Total: $O(n)$ amortized with caching (80\% cache hit rate: $0.8 \times 5$ms $+ 0.2 \times 100$ms $= 24$ms per finding)
+    
+    \item \textbf{Space Complexity:} $O(n + m)$ where:
+    \begin{itemize}
+        \item $n = |\text{findings}|$ (input size)
+        \item $m = \text{cache\_size}$ (Redis cache: $O(k)$ where $k$ = number of unique finding patterns, typically $<10,000$ entries)
+    \end{itemize}
+    Total: $O(n)$ space
+    
+    \item \textbf{Failure Modes:}
+    \begin{enumerate}
+        \item \textbf{Bundle Load Failure:} Invalid Rego syntax → Default deny policy, log error
+        \item \textbf{Redis Cache Unavailable:} Connection failure → Skip caching, proceed with OPA evaluation
+        \item \textbf{Evaluation Timeout:} Complex policy $>1$s → Timeout, use default deny
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Algorithm 3: Finding Deduplication}
+
+\textbf{Purpose:} Deduplicates security findings by location and rule, eliminating redundant findings from multiple scanners detecting the same vulnerability.
+
+\textbf{Input:}
+\begin{itemize}
+    \item $\text{findings}$: Array of SARIF result objects from multiple scanners $[f_1, f_2, \ldots, f_n]$
+\end{itemize}
+
+\textbf{Output:}
+\begin{itemize}
+    \item $\text{deduplicated}$: Array of unique findings (one finding per vulnerability location) $[f'_1, f'_2, \ldots, f'_k]$ where $k \leq n$
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Finding Deduplication}
+\begin{algorithmic}[1]
+\Require $\text{findings} \neq \emptyset$
+\Ensure $\text{deduplicated}$ with redundant findings removed
+
+\State $\text{hash\_map} \gets \{\}$ \Comment{Hash table: $\text{hash\_key} \to \text{finding}$}
+\State $\text{deduplicated} \gets []$
+
+\For{each finding $f \in \text{findings}$}
+    \State $\text{hash\_key} \gets \text{SHA256}(f.\text{ruleId} + f.\text{location}.\text{file} + f.\text{location}.\text{start\_line})$ \Comment{Hash-based grouping}
+    
+    \If{$\text{hash\_map}.\text{contains}(\text{hash\_key})$}
+        \State $f_{\text{existing}} \gets \text{hash\_map}[\text{hash\_key}]$
+        \State $f_{\text{merged}} \gets \text{MergeFindings}(f_{\text{existing}}, f)$ \Comment{Combine scanner metadata, keep highest severity}
+        \State $\text{hash\_map}[\text{hash\_key}] \gets f_{\text{merged}}$
+    \Else
+        \State $\text{hash\_map}[\text{hash\_key}] \gets f$
+    \EndIf
+\EndFor
+
+\For{each $\text{hash\_key} \in \text{hash\_map}$}
+    \State $\text{deduplicated}.\text{append}(\text{hash\_map}[\text{hash\_key}])$
+\EndFor
+
+\State \Return $\text{deduplicated}$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Complexity Analysis:}
+
+\begin{itemize}
+    \item \textbf{Time Complexity:} $O(n)$ where $n = |\text{findings}|$
+    \begin{itemize}
+        \item Hash computation: $O(1)$ per finding (SHA256: constant time for fixed-length input)
+        \item Hash map lookup/insertion: $O(1)$ amortized (hash table with chaining)
+        \item Finding merge: $O(1)$ per duplicate (metadata combination)
+    \end{itemize}
+    Total: $O(n)$ linear time
+    
+    \item \textbf{Space Complexity:} $O(n)$ where $n = |\text{findings}|$
+    \begin{itemize}
+        \item Hash map: $O(k)$ where $k$ = number of unique finding locations ($k \leq n$)
+        \item Deduplicated array: $O(k)$
+    \end{itemize}
+    Total: $O(n)$ space (worst case: all findings unique, $k = n$)
+    
+    \item \textbf{Failure Modes:}
+    \begin{enumerate}
+        \item \textbf{Hash Collision:} SHA256 collision (probability $< 2^{-256}$) → Collision resolution via exact matching (ruleId + location + severity)
+        \item \textbf{Memory Overflow:} Large finding sets ($>100,000$ findings) → Streaming deduplication (process in batches)
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Complexity Summary Table}
+
+The following table summarizes complexity characteristics for all three algorithms:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Algorithm} & \textbf{Time Complexity} & \textbf{Space Complexity} & \textbf{Dominant Factor} \\
+\midrule
+Agentic Triage Orchestration & $O(n \times k)$ & $O(n \times m)$ & LLM inference time ($k \approx 5$s) \\
+Policy Evaluation Engine & $O(n)$ (amortized) & $O(n)$ & Cache hit rate (80\%) \\
+Finding Deduplication & $O(n)$ & $O(n)$ & Hash table operations \\
+\bottomrule
+\end{tabular}
+\caption{Algorithm Complexity Summary}
+\label{tab:complexity}
+\end{table}
+
+\textbf{Notes:}
+\begin{itemize}
+    \item Triage orchestration complexity depends on LLM inference time ($k$), which can be parallelized (goroutines) to reduce wall-clock time.
+    \item Policy evaluation benefits from Redis caching (80\% cache hit rate), reducing average latency from 100ms to 24ms.
+    \item Deduplication is optimal $O(n)$ with hash-based grouping, enabling efficient processing of large finding sets (10,000+ findings).
+\end{itemize}
+

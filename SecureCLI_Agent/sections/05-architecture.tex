@@ -1,0 +1,152 @@
+% Section 5: Architecture
+% Converted from 4.5-architecture.md
+% Module 5.2: Section Integration & Flow Refinement
+
+\subsection{High-Level Architecture}
+
+AegisCLI is an agentic security remediation platform that orchestrates security scanning, normalizes findings via \sarif{} v2.1.0, performs AI-powered triage using local \llm s, and enforces remediation policies through policy-as-code. The platform operates as an orchestrator---not an autonomous actor---that coordinates multiple security tools within defined policy boundaries, enabling unified visibility, automated triage, and privacy-preserving automation.
+
+The high-level architecture consists of five core components: \textbf{CLI Core} (command-line interface, workflow orchestration), \textbf{Scanner Adapters} (language-specific adapters for Semgrep, Trivy, Checkov, etc.), \textbf{Triage Engine} (local \llm{} integration via Ollama, prompt generation, confidence scoring), \textbf{Policy Engine} (\opa{}/Rego evaluation, decision caching via Redis), and \textbf{Dashboard} (PostgreSQL storage, Grafana visualization, metrics aggregation). These components interact through well-defined interfaces (\sarif{} v2.1.0 for findings, JSON for policy decisions, REST API for dashboard queries), enabling modular design and extensibility.
+
+The agentic AI design emphasizes orchestration rather than autonomy: AegisCLI coordinates scanner invocation, normalizes outputs, and performs triage decisions, but does not autonomously modify code or bypass human review. Human-in-the-loop triggers---low confidence scores ($<0.8$), policy violations, or champion review flags---ensure that critical decisions remain under human oversight, aligning with organizational security practices and regulatory compliance requirements. This orchestration model distinguishes AegisCLI from fully autonomous AI systems, positioning the platform as an augmentative tool that reduces developer overhead while preserving human agency.
+
+The platform's architecture supports both interactive CLI usage (single-command scan and triage workflows) and CI/CD integration (automated scanning pipelines, policy enforcement gates). The CLI Core exposes a unified interface (\texttt{aegiscli scan --repo <path> --scanners semgrep,trivy --triage --policy}) that abstracts underlying complexity (scanner invocation, \sarif{} normalization, \llm{} triage, policy evaluation) into a single developer-friendly command, reducing tool-switching overhead and cognitive load.
+
+\subsection{Component Deep Dive}
+
+\subsubsection{Scanner Orchestration Layer}
+
+The Scanner Orchestration Layer provides language-specific adapters for multiple security scanners, normalizing all outputs into \sarif{} v2.1.0 format for unified processing. The layer supports 5 language ecosystems: Node.js (Semgrep, npm audit), Python (Semgrep, safety), Go (Semgrep, gosec), Java (Semgrep, SpotBugs), and Terraform/IaC (Checkov, Terrascan).
+
+Each scanner adapter implements the \texttt{ScannerAdapter} interface, providing methods for: (1) scanner invocation (\texttt{RunScan(context.Context, ScanConfig) ([]sarif.Result, error)}), (2) \sarif{} normalization (\texttt{NormalizeToSARIF(rawOutput []byte) (*sarif.Run, error)}), and (3) error handling (\texttt{HandleErrors(error) error}). The normalization process transforms scanner-specific outputs (YAML rules, JSON vulnerability databases, text logs) into \sarif{} v2.1.0-compliant result objects, ensuring consistent severity mapping (CRITICAL/HIGH/MEDIUM/LOW), location encoding (file path, start/end line, column), and rule metadata (CWE IDs, rule descriptions).
+
+The following code snippet demonstrates \sarif{} normalization for Semgrep output (Go implementation):
+
+\begin{verbatim}
+func (s *SemgrepAdapter) NormalizeToSARIF(rawOutput []byte) (*sarif.Run, error) {
+    var semgrepResults SemgrepOutput
+    if err := json.Unmarshal(rawOutput, &semgrepResults); err != nil {
+        return nil, fmt.Errorf("semgrep parse error: %w", err)
+    }
+    
+    run := &sarif.Run{
+        Tool: &sarif.Tool{
+            Driver: &sarif.ToolComponent{
+                Name: "semgrep",
+                Version: s.version,
+            },
+        },
+        Results: make([]*sarif.Result, 0),
+    }
+    
+    for _, finding := range semgrepResults.Results {
+        result := &sarif.Result{
+            RuleId: finding.CheckID,
+            Level: normalizeSeverity(finding.Extra.Severity),
+            Message: &sarif.Message{Text: finding.Extra.Message},
+            Locations: []*sarif.Location{{
+                PhysicalLocation: &sarif.PhysicalLocation{
+                    ArtifactLocation: &sarif.ArtifactLocation{
+                        Uri: finding.Path,
+                    },
+                    Region: &sarif.Region{
+                        StartLine: finding.Start.Line,
+                        EndLine: finding.End.Line,
+                    },
+                },
+            }},
+        }
+        run.Results = append(run.Results, result)
+    }
+    return run, nil
+}
+\end{verbatim}
+
+This normalization enables cross-tool deduplication (same vulnerability detected by multiple scanners) and unified severity classification, addressing the tool fragmentation problem identified in Section~1.2.
+
+\subsubsection{Agentic Triage Engine}
+
+The Agentic Triage Engine integrates local \llm{} triage using CodeLlama 13B (quantized Q4\_K\_M, via Ollama) to classify security findings, assign confidence scores, and reduce false-positive noise. The engine operates as an orchestrator that coordinates \llm{} inference, prompt generation, and result parsing, but does not autonomously suppress findings without policy approval.
+
+The triage workflow follows five steps: (1) finding context extraction (code snippet, git blame, recent commits), (2) prompt generation (5-shot examples, finding description, severity labels), (3) \llm{} inference (\texttt{ollama generate codellama:13b --prompt <template>}), (4) JSON parsing (severity rank, confidence, explanation, CWE mapping), and (5) annotation enrichment (append confidence and explanation to \sarif{} result). The following code snippet demonstrates prompt generation (5-shot template):
+
+\begin{verbatim}
+You are a security expert classifying vulnerability findings. 
+Examples:
+1. SQL injection in user input → CRITICAL (confidence: 0.95)
+2. Hardcoded API key in config → HIGH (confidence: 0.88)
+3. Outdated dependency (minor) → LOW (confidence: 0.72)
+4. Insecure random number → MEDIUM (confidence: 0.81)
+5. Missing input validation → MEDIUM (confidence: 0.75)
+
+Finding: {finding_description}
+Code: {code_snippet}
+
+Classify severity (CRITICAL/HIGH/MEDIUM/LOW) and confidence (0.0-1.0).
+Output JSON: {"severity": "...", "confidence": 0.0, "explanation": "..."}
+\end{verbatim}
+
+The engine uses confidence thresholds to trigger human review: findings with confidence $< 0.8$ are flagged for champion review, ensuring that uncertain classifications receive human oversight. This human-in-the-loop mechanism prevents false negatives (low-confidence findings that are actually critical) while reducing false-positive noise for high-confidence classifications.
+
+\subsubsection{Policy Engine}
+
+The Policy Engine evaluates \opa{}/Rego policies against \sarif{} findings, encoding remediation SLAs, exemption rules, and prioritization policies as executable Rego code. The engine integrates \opa{} as the policy runtime, loads policy bundles from \texttt{policies/} directory, and caches policy decisions via Redis to reduce evaluation latency.
+
+Policy evaluation follows three steps: (1) input preparation (convert \sarif{} result to \opa{} input JSON, include context: finding severity, confidence, team metadata), (2) \opa{} query (\texttt{opa eval --data <bundle> --input <finding> 'data.aegiscli.policies.allow'}), (3) decision parsing (allow/deny with explanatory message). The following Rego policy example encodes a remediation SLA:
+
+\begin{verbatim}
+package aegiscli.policies
+
+default allow = false
+
+# Critical findings must be remediated within 48 hours
+deny[msg] {
+    input.severity == "CRITICAL"
+    input.age_hours > 48
+    msg := "Critical finding exceeds 48-hour SLA; escalate to champion"
+}
+
+# Low-confidence findings require champion review
+deny[msg] {
+    input.confidence < 0.8
+    input.severity == "HIGH"
+    msg := "High-severity finding with low confidence; require champion review"
+}
+\end{verbatim}
+
+Policy decisions are cached in Redis (TTL: 24 hours) to reduce evaluation overhead for repeated findings (e.g., duplicate vulnerabilities across multiple files). This caching mechanism improves policy engine performance (latency reduction: 80ms $\to$ 5ms for cached decisions) while ensuring that policy updates (bundle reload) invalidate stale cache entries.
+
+\subsubsection{Dashboard}
+
+The Dashboard component provides unified visibility into security findings, triage decisions, and debt metrics via PostgreSQL storage and Grafana visualization. The dashboard stores \sarif{} results, \llm{} annotations, policy decisions, and \mttr{} metrics in normalized schema (\texttt{findings}, \texttt{triage\_annotations}, \texttt{policy\_decisions}, \texttt{mttr\_metrics} tables), enabling SQL-based aggregation and time-series analysis.
+
+The PostgreSQL schema normalizes \sarif{} results into relational format (\texttt{findings} table: \texttt{id}, \texttt{rule\_id}, \texttt{severity}, \texttt{file\_path}, \texttt{start\_line}, \texttt{detected\_at}, \texttt{remediated\_at}, \texttt{mttr\_hours}), enabling queries such as ``\mttr{} by severity level'' or ``debt velocity by team.'' The following Grafana query example visualizes debt accumulation over time:
+
+\begin{verbatim}
+SELECT 
+    DATE_TRUNC('quarter', detected_at) AS quarter,
+    SUM(CASE WHEN remediated_at IS NULL THEN 1 ELSE 0 END) AS unresolved_debt,
+    team_name
+FROM findings
+WHERE severity IN ('CRITICAL', 'HIGH')
+GROUP BY quarter, team_name
+ORDER BY quarter DESC;
+\end{verbatim}
+
+This dashboard enables security teams to track debt velocity (issues per quarter), monitor \mttr{} trends (hours to remediation by severity), and identify teams requiring intervention (high debt accumulation, slow remediation). The visualization supports evidence-based security management, addressing the security debt problem identified in Section~1.2.
+
+\subsection{Privacy-Preserving Design}
+
+AegisCLI's architecture prioritizes privacy-by-design, ensuring that sensitive code and findings remain on-premises and are not transmitted to external providers. This design addresses the privacy-compliance tradeoff identified in Section~1.2, enabling organizations with strict data residency requirements (GDPR, HIPAA, PCI-DSS) to adopt AI-powered security automation without violating regulatory constraints.
+
+\textbf{Air-Gap Mode.} The platform supports air-gap deployment via \texttt{--offline} flag, disabling all external network calls (no API requests, no model downloads). Ollama models must be pre-downloaded (via \texttt{ollama pull codellama:13b}) before air-gap deployment, ensuring that \llm{} inference occurs entirely on-premises. This air-gap mode is validated during P2 pilot deployment, confirming that no outbound network traffic occurs during normal operation (network packet analysis, firewall logs).
+
+\textbf{Secret Redaction.} Code snippets sent to \llm{} triage are processed through Gitleaks integration, redacting secrets (API keys, passwords, tokens) before \llm{} context. The redaction process scans code snippets for patterns (regex-based detection: \texttt{api\_key.*=.*["\']([\textasciicircum{}"\']+)["\']}), replaces secrets with placeholders (\texttt{[REDACTED]}), and logs redaction events (audit trail for compliance). This redaction mechanism prevents accidental secret leakage via \llm{} context, addressing OWASP \llm{} Top 10 risks (secret exfiltration, training data exposure).
+
+\textbf{Telemetry Minimization.} AegisCLI's telemetry collection is opt-in only, with participants explicitly consenting during P0 onboarding. Telemetry is minimized to essential metrics only: scan duration, tool count, finding count (no code snippets, no PII, no file paths beyond repository name). Code snippets are truncated to 5 lines maximum before any processing (\llm{} context, telemetry), preventing accidental secret leakage. This minimization approach balances research data needs (quantitative metrics for RQ1--RQ4) with privacy protection, ensuring that telemetry does not expose sensitive organizational data.
+
+\textbf{Privacy Compliance Validation.} The privacy-preserving design is validated through compliance audits (P3: external security review, GDPR compliance checklist, HIPAA BAA requirements). These audits confirm that: (1) no code exfiltration occurs (network analysis, firewall logs), (2) telemetry respects opt-in consent (90-day rolling retention, anonymization), (3) secret redaction prevents PII exposure (Gitleaks integration testing). This validation provides evidence-based assurance for privacy-sensitive organizations considering AegisCLI adoption.
+
+% Transition paragraph to Section 6 (Implementation)
+Having described the AegisCLI architecture, the next section documents implementation phases (P0--P4), highlighting how engineering development integrated with research activities to generate evaluation data.
+

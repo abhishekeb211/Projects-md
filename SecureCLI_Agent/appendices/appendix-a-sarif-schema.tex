@@ -1,9 +1,7 @@
 % Appendix A: SARIF Subset Schema
 % Module 5.1: LaTeX Template & Structure Setup
 
-This appendix documents the SARIF v2.1.0 subset schema used by AegisCLI for scanner output normalization.
-
-\todo{Include SARIF v2.1.0 subset schema JSON with annotations}
+This appendix documents the \sarif{} v2.1.0 subset schema used by AegisCLI for scanner output normalization.
 
 The schema includes the following key elements:
 \begin{itemize}
@@ -12,4 +10,71 @@ The schema includes the following key elements:
     \item Location information
     \item Custom extensions (confidence scores, policy decision flags, champion review annotations)
 \end{itemize}
+
+\subsection{SARIF Result Object Structure}
+
+A \sarif{} result object represents a single security finding. The following example demonstrates the core structure used by AegisCLI:
+
+\begin{verbatim}
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [{
+    "tool": {
+      "driver": {
+        "name": "aegiscli",
+        "version": "1.0.0"
+      }
+    },
+    "results": [{
+      "ruleId": "java/insecure-random",
+      "level": "error",
+      "message": {
+        "text": "Use of java.util.Random is insecure; prefer SecureRandom"
+      },
+      "locations": [{
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "src/main/java/App.java"
+          },
+          "region": {
+            "startLine": 42,
+            "startColumn": 12,
+            "endLine": 42,
+            "endColumn": 28
+          }
+        }
+      }],
+      "rule": {
+        "id": "java/insecure-random",
+        "name": "Insecure Random Number Generation",
+        "shortDescription": {
+          "text": "Detects insecure RNG usage"
+        },
+        "properties": {
+          "cwe": ["CWE-330"],
+          "severity": "high"
+        }
+      },
+      "properties": {
+        "aegiscli:confidence": 0.81,
+        "aegiscli:policyDecision": "allow",
+        "aegiscli:championReview": false
+      }
+    }]
+  }]
+}
+\end{verbatim}
+
+\subsection{Custom Extensions}
+
+AegisCLI extends the standard \sarif{} v2.1.0 schema with custom properties in the \texttt{result.properties} object:
+
+\begin{itemize}
+    \item \texttt{aegiscli:confidence} (float, 0.0--1.0): \llm{} triage confidence score for the finding classification.
+    \item \texttt{aegiscli:policyDecision} (string): \opa{} policy evaluation result (\texttt{allow}, \texttt{deny}, \texttt{warning}).
+    \item \texttt{aegiscli:championReview} (boolean): Flag indicating whether the finding requires champion review (triggered by low confidence $<0.8$ or policy violations).
+\end{itemize}
+
+These extensions enable AegisCLI to enrich \sarif{} results with \llm{} triage annotations and policy decisions while maintaining backward compatibility with standard \sarif{} consumers.
 

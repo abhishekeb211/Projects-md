@@ -1,15 +1,69 @@
 % Appendix C: Prompt Templates
 % Module 5.1: LaTeX Template & Structure Setup
 
-This appendix documents the LLM prompt templates used for security finding triage in AegisCLI.
+This appendix documents the \llm{} prompt templates used for security finding triage in AegisCLI.
 
-\todo{Include 5-shot prompt template for triage}
+\subsection{5-Shot Prompt Template}
 
-The prompt template includes:
+The following prompt template is used for \llm{} triage classification with CodeLlama 13B (via Ollama). The template includes 5-shot examples demonstrating the expected classification behavior.
+
+\begin{verbatim}
+You are a security expert classifying vulnerability findings. Your task is to classify each finding's severity (CRITICAL/HIGH/MEDIUM/LOW) and assign a confidence score (0.0-1.0).
+
+Examples:
+1. SQL injection in user input → CRITICAL (confidence: 0.95)
+   Finding: User-supplied data directly concatenated into SQL query
+   Code: query = "SELECT * FROM users WHERE id = " + userInput
+   Explanation: SQL injection vulnerabilities allow attackers to execute arbitrary SQL commands, enabling data exfiltration and system compromise.
+
+2. Hardcoded API key in config file → HIGH (confidence: 0.88)
+   Finding: API key stored as plaintext in configuration file
+   Code: API_KEY = "sk_live_1234567890abcdef"
+   Explanation: Hardcoded secrets in version control expose credentials to unauthorized access, violating security best practices.
+
+3. Outdated dependency with minor vulnerability → LOW (confidence: 0.72)
+   Finding: npm package 'lodash' version 4.17.19 (CVE-2020-28500, low severity)
+   Code: "lodash": "^4.17.19"
+   Explanation: Minor dependency vulnerabilities in development dependencies pose low risk but should be updated for security hygiene.
+
+4. Insecure random number generation → MEDIUM (confidence: 0.81)
+   Finding: Use of java.util.Random instead of SecureRandom
+   Code: Random rng = new Random(); int token = rng.nextInt(1000000);
+   Explanation: Insecure random number generators produce predictable output, weakening cryptographic security in token generation.
+
+5. Missing input validation on user input → MEDIUM (confidence: 0.75)
+   Finding: User input accepted without length or format validation
+   Code: String username = request.getParameter("username");
+   Explanation: Missing input validation can enable injection attacks or buffer overflows, depending on downstream processing.
+
+Finding: {finding_description}
+Code: {code_snippet}
+Context: {git_blame_info} (recent commits: {recent_commits})
+
+Classify severity (CRITICAL/HIGH/MEDIUM/LOW) and confidence (0.0-1.0).
+Output JSON only: {"severity": "...", "confidence": 0.0, "explanation": "..."}
+\end{verbatim}
+
+\subsection{Context Extraction}
+
+The prompt includes context extracted from:
 \begin{itemize}
-    \item 5-shot examples (demonstrating triage classification)
-    \item Context extraction (code snippets, git blame, recent commits)
-    \item Output format specification (JSON with severity, confidence, explanation)
-    \item Confidence threshold guidelines (human review triggers)
+    \item \textbf{Finding description}: Rule name, message, and CWE mapping from \sarif{} result
+    \item \textbf{Code snippet}: 5-line code context (truncated to prevent secret leakage)
+    \item \textbf{Git blame}: Author and commit information for the vulnerable code
+    \item \textbf{Recent commits}: Commit history (last 3 commits) to understand code context
 \end{itemize}
+
+\subsection{Output Format}
+
+The \llm{} output must be valid JSON with three fields:
+\begin{itemize}
+    \item \texttt{severity} (string): One of CRITICAL, HIGH, MEDIUM, LOW
+    \item \texttt{confidence} (float): Numeric confidence score from 0.0 to 1.0
+    \item \texttt{explanation} (string): Brief explanation of the classification rationale
+\end{itemize}
+
+\subsection{Confidence Threshold Guidelines}
+
+Findings with confidence $< 0.8$ are flagged for champion review, ensuring that uncertain classifications receive human oversight. This human-in-the-loop mechanism prevents false negatives while reducing false-positive noise for high-confidence classifications.
 

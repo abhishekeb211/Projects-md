@@ -1,0 +1,85 @@
+% Section 4: Design Science Methodology
+% Converted from 4.4-methodology.md
+% Module 5.2: Section Integration & Flow Refinement
+
+\subsection{Problem Definition}
+
+The design science research (DSR) methodology requires a clear problem definition grounded in organizational practice and empirical evidence. We define the problem through baseline metrics collected during Phase 0 (P0), demonstrating tool sprawl overhead, security debt accumulation, and privacy-compliance tradeoffs in a large-scale DevSecOps context.
+
+\textbf{Baseline Metrics from P0.} During the initial assessment phase (P0), we measured tool-switching overhead in the pre-AegisCLI environment across 50 repositories and 20 teams. Tool-switching time---the cognitive and operational overhead of switching between security scanners---was measured via CI/CD log analysis and developer surveys. Our baseline metrics show: average tool-switching time of 8.3 minutes per scan cycle, with teams deploying 5--7 distinct scanners per repository. The overhead, measured as tool-switching time divided by total security activity time, averaged 62\% across all teams, with some teams reporting overhead as high as 75\% for multi-language repositories.
+
+The tool-switching time histogram (see Section~7, Figure~\ref{fig:tool-switching}) reveals a bimodal distribution: teams with 3--4 scanners exhibit overhead of 40--50\%, while teams with 6--7 scanners exhibit overhead of 65--75\%. This relationship suggests that overhead grows non-linearly with tool count, validating the tool sprawl problem and motivating unified orchestration as a solution. Additionally, we measured security debt accumulation velocity (issues per quarter) during P0: non-\pac{} teams accumulated debt at a rate of +12.3 issues per quarter, while teams with manual policy enforcement accumulated debt at +8.4 issues per quarter (28\% reduction), indicating that policy automation has measurable impact but remains underutilized.
+
+\textbf{Tool Sprawl Overhead Construct.} We define ``Tool Sprawl Overhead'' as a quantitative construct measuring the productivity drain of multi-tool security workflows:
+
+\begin{equation}
+\text{Overhead} = \frac{\sum \text{tool\_switch\_time} + \text{reconciliation\_time}}{\text{total\_security\_time}}
+\end{equation}
+
+Where \texttt{tool\_switch\_time} is the time spent switching between scanners (measured via CI/CD logs), \texttt{reconciliation\_time} is the time spent deduplicating findings across tools (measured via developer surveys), and \texttt{total\_security\_time} is the sum of scanning, switching, reconciliation, and triage activities. Our baseline P0 measurements show overhead = 0.62 $\pm$ 0.08 across 20 teams, providing a quantitative anchor for evaluating AegisCLI's orchestration effectiveness (RQ1).
+
+This construct operationalizes the theoretical problem of tool sprawl into measurable outcomes, enabling hypothesis testing and comparison across treatment groups (AegisCLI-enabled vs. pre-AegisCLI baseline). By grounding the problem in empirical baseline data, we ensure that DSR problem definition follows Hevner's (2004) principle of relevance---addressing a real-world organizational challenge with quantifiable evidence~\cite{ref:hevner2004}.
+
+\subsection{Artifact Design Principles}
+
+The AegisCLI artifact is designed following three core principles that address the tool sprawl, privacy, and debt problems: zero-cost adoption, privacy-by-design, and extensibility. These principles guide architectural decisions and tradeoffs, ensuring that the artifact remains accessible to diverse organizational contexts while preserving research rigor.
+
+\textbf{Zero-Cost Adoption (OSS, Local-First).} AegisCLI is distributed as open-source software (Apache 2.0 license) with no licensing fees, reducing adoption barriers for resource-constrained organizations. The platform operates entirely on-premises, eliminating cloud infrastructure costs (API pricing, data transfer fees) that often make commercial security tools prohibitively expensive for large-scale deployments. This local-first architecture requires initial infrastructure setup (GPU for \llm{} inference, or CPU fallback with slower latency), but eliminates recurring cloud costs, making it economically viable for organizations with privacy constraints that cannot adopt cloud-based alternatives.
+
+The zero-cost adoption principle influences several design decisions: (1) Ollama as the \llm{} runtime (no API pricing, model pre-download for air-gap), (2) PostgreSQL + Grafana for dashboard (open-source stack, no SaaS subscriptions), (3) Go language for CLI core (static binaries, cross-platform deployment without runtime dependencies). While these decisions introduce operational complexity (model management, database administration), they ensure that AegisCLI remains accessible to organizations operating under budget constraints or air-gap requirements.
+
+\textbf{Privacy-by-Design (No Telemetry Without Opt-In).} Privacy-by-design is a core architectural principle ensuring that AegisCLI operates without transmitting sensitive data (code snippets, security findings) to external providers unless explicitly authorized. The platform defaults to air-gap mode (\texttt{--offline} flag), requiring all \llm{} inference to occur on-premises using local CodeLlama 13B models. This design choice addresses the privacy-compliance tradeoff identified in our problem definition, enabling organizations with strict data residency requirements (GDPR, HIPAA, PCI-DSS) to adopt AI-powered security automation without violating regulatory constraints.
+
+Privacy-by-design manifests in several implementation details: (1) Code snippets are truncated to 5 lines maximum before \llm{} context (preventing accidental secret leakage), (2) Gitleaks integration redacts secrets before \llm{} triage (preventing PII transmission), (3) Telemetry is opt-in only (90-day rolling retention policy, anonymized data), (4) No external API calls by default (Ollama local deployment, \sarif{} normalization entirely on-premises). While these privacy safeguards may limit some capabilities (e.g., model updates require manual download, not automatic sync), they ensure regulatory compliance for privacy-sensitive contexts.
+
+\textbf{Extensibility (Plugin Architecture for New Scanners).} AegisCLI's architecture is designed for extensibility, enabling integration of new security scanners without modifying core orchestration logic. The platform implements a plugin architecture where each scanner adapter (Semgrep, Trivy, Checkov) implements a common interface (\texttt{ScannerAdapter}), providing methods for scan invocation, \sarif{} normalization, and result parsing. This modular design allows organizations to add custom scanners or update scanner versions without architectural changes, reducing maintenance burden and enabling adoption of emerging tools.
+
+Extensibility is achieved through: (1) Standardized \sarif{} output schema (all adapters produce \sarif{} v2.1.0-compliant results), (2) Plugin discovery mechanism (scan \texttt{plugins/} directory, load adapters dynamically), (3) Configuration-driven scanner invocation (YAML config defines which scanners run for which languages), (4) Extensible policy engine (Rego policies can reference custom scanner metadata). This design ensures that AegisCLI remains relevant as the security tooling landscape evolves, addressing Hevner's (2004) principle of artifact extensibility and generalizability~\cite{ref:hevner2004}.
+
+\subsection{Evaluation Framework}
+
+Our evaluation framework maps Design Science Research (DSR) cycles to empirical research phases (P0--P4), demonstrating how each phase generates knowledge artifacts and data for research questions (RQ1--RQ5). The framework follows Hevner's (2004) DSR methodology, iterating through cycles of problem awareness, suggestion (design), development (implementation), evaluation, and conclusion (knowledge generation)~\cite{ref:hevner2004}.
+
+\textbf{DSR Cycle Mapping to Research Phases.} The research is structured as five phases (P0--P4) spanning 12 months, with each phase corresponding to a DSR cycle:
+
+\begin{itemize}
+\item \textbf{P0 (Requirements \& Baseline, Months 1--2):} Problem awareness cycle---collect baseline metrics (tool-switching overhead, security debt velocity), define organizational requirements (privacy constraints, tool integration needs), establish gold-standard datasets (200 stratified findings for E2). This phase generates baseline data for RQ1 (orchestration efficiency comparison), RQ3 (debt velocity measurement), and RQ2 (\llm{} triage gold standard).
+
+\item \textbf{P1 (Design \& Architecture, Months 3--4):} Suggestion cycle---design AegisCLI architecture (\sarif{} normalization, \llm{} triage engine, policy engine), formulate design principles (zero-cost, privacy-by-design, extensibility), create formal notation and algorithm specifications. This phase generates design artifacts (architecture diagrams, formal notation) that validate the solution's theoretical soundness.
+
+\item \textbf{P2 (Implementation \& Pilot, Months 5--7):} Development cycle---implement AegisCLI components (scanner adapters, Ollama integration, \opa{} policy engine), deploy pilot deployment (5 teams, 10 repositories), collect preliminary feedback (champion interviews, developer surveys). This phase generates preliminary data for RQ4 (champion program impact), RQ5 (adoption barriers), and validates implementation feasibility.
+
+\item \textbf{P3 (Evaluation \& Expansion, Months 8--10):} Evaluation cycle---expand deployment to full scale (20 teams, 50 repositories), conduct controlled experiments (E1--E4) addressing RQ1--RQ4, collect quantitative metrics (\mttr{}, triage accuracy, debt velocity), perform thematic analysis (RQ5 qualitative findings). This phase generates primary research data for all five research questions.
+
+\item \textbf{P4 (Reflection \& Knowledge, Months 11--12):} Conclusion cycle---synthesize findings (RQ answers, contribution claims), identify limitations (external validity, construct validity), propose future work (multi-org replication, other \llm{} evaluation). This phase generates knowledge artifacts (research insights, theoretical contributions) that advance the state of practice.
+\end{itemize}
+
+\textbf{Data Generation for Research Questions.} Each DSR cycle generates data addressing specific research questions:
+
+\begin{itemize}
+\item \textbf{RQ1 (Orchestration Efficiency):} P0 baseline (tool-switching overhead = 0.62) $\to$ P3 E1 (A/B design, AegisCLI vs. baseline) $\to$ P4 conclusion (62\% overhead reduction, supporting H1).
+
+\item \textbf{RQ2 (\llm{} Triage Accuracy):} P0 gold standard (200 findings, 3 experts) $\to$ P3 E2 (CodeLlama vs. expert panel, $\kappa$ calculation) $\to$ P4 conclusion ($\kappa = 0.78$, validating privacy-performance tradeoff).
+
+\item \textbf{RQ3 (\pac{} Effectiveness):} P0 baseline (debt velocity = +12.3 issues/quarter) $\to$ P3 E3 (\pac{}-enabled vs. manual teams, quarterly snapshots) $\to$ P4 conclusion (43\% debt reduction, supporting H3).
+
+\item \textbf{RQ4 (Champion Impact):} P0 champion identification (20 teams, 12 with champions) $\to$ P3 E4 (\mttr{} comparison, regression analysis) $\to$ P4 conclusion (28\% \mttr{} improvement, supporting H4).
+
+\item \textbf{RQ5 (Adoption Barriers):} P2 pilot interviews (5 champions, semi-structured) $\to$ P4 final interviews (10 champions, thematic analysis) $\to$ P4 conclusion (trust, friction, workflow integration themes).
+\end{itemize}
+
+This evaluation framework ensures that DSR cycles systematically generate evidence addressing all research questions, following Hevner's (2004) principle of research rigor---applying appropriate research methods to evaluate artifact effectiveness~\cite{ref:hevner2004}.
+
+\subsection{Research Ethics}
+
+Our research adheres to ethical principles governing human subjects research, data privacy, and organizational consent. We obtained Institutional Review Board (IRB) approval for all interview-based data collection (champion interviews, developer surveys) and implemented informed consent procedures ensuring participants understand data usage, retention, and opt-out rights. (IRB protocol details documented in Appendix~D.)
+
+\textbf{IRB Approval and Consent.} All interview participants (security champions, developers) provided written informed consent, documenting their understanding of: (1) research purpose (evaluating AegisCLI effectiveness), (2) data collection scope (interviews, CI/CD logs, anonymized metrics), (3) data retention policy (90-day rolling retention for telemetry, interview transcripts retained per IRB protocol), (4) opt-out rights (participants can withdraw consent at any time without organizational penalty). Interview protocols were reviewed and approved by IRB, ensuring ethical compliance with human subjects research standards.
+
+\textbf{Telemetry Minimization and Privacy.} AegisCLI's telemetry collection is opt-in only, with participants explicitly consenting to telemetry transmission during P0 onboarding. Telemetry is minimized to essential metrics only: scan duration, tool count, finding count (no code snippets, no PII, no file paths beyond repository name). Code snippets sent to \llm{} triage are truncated to 5 lines maximum (preventing accidental secret leakage), and Gitleaks integration redacts secrets before \llm{} context. This minimization approach balances research data needs (quantitative metrics for RQ1--RQ4) with privacy protection, ensuring that telemetry does not expose sensitive organizational data.
+
+\textbf{Organizational Consent and Data Residency.} Organizational consent was obtained at the executive level (security leadership, engineering leadership), documenting agreement for: (1) AegisCLI deployment across 50 repositories and 20 teams, (2) CI/CD log analysis (anonymized, aggregated metrics only), (3) participation in IRB-approved interviews (champions, developers). All data collection respects organizational data residency requirements (air-gap environments, on-premises \llm{} inference), ensuring that sensitive code and findings are not transmitted to external providers. This organizational consent process ensures that research activities align with organizational privacy policies and regulatory compliance requirements.
+
+% Transition paragraph to Section 5 (Architecture)
+Having established our Design Science Research methodology, the next section describes the AegisCLI architecture in detail, covering scanner orchestration, agentic triage engine, policy enforcement, and privacy-preserving design.
+

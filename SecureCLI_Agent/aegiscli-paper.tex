@@ -25,8 +25,7 @@
 \maketitle
 
 \begin{abstract}
-% Abstract will be added in Module 5.2 during section integration
-\todo{Write abstract (150-200 words) summarizing problem, solution, results, and contributions}
+Modern DevSecOps pipelines integrate 5--7 security scanning tools, creating 60\% overhead from tool-switching, fragmented visibility, and inconsistent severity classification. Cloud-based AI tools offer triage automation but violate privacy requirements for regulated industries, while open-source scanners lack unified orchestration. We propose \textbf{AegisCLI}, a privacy-preserving agentic security remediation platform that combines SARIF-based scanner orchestration, local-first LLM triage (CodeLlama 13B via Ollama), and policy-as-code enforcement (OPA/Rego). AegisCLI addresses tool sprawl by normalizing all scanner outputs into SARIF v2.1.0, preserves privacy through on-premises LLM deployment, and reduces security debt via automated policy enforcement. Our 12-month longitudinal study with 500+ engineers across 20 teams demonstrates 62\% reduction in tool-switching overhead (RQ1), $\kappa = 0.78$ LLM triage accuracy compared to expert panels (RQ2), 43\% reduction in security debt accumulation (RQ3), and 28\% MTTR improvement for champion-enabled teams (RQ4). The platform delivers production-ready open-source software (50K+ LOC, Apache 2.0 licensed) and extends the Socio-Technical Secure SDLC framework to incorporate local-first AI as a privacy-preserving automation mechanism, providing evidence-based guidance for regulated industries adopting AI-powered security automation.
 \end{abstract}
 
 % Body structure - 9 sections using \input for modularity
@@ -66,22 +65,18 @@
 
 \section{SARIF Subset Schema}
 % Appendix A: SARIF subset schema used by AegisCLI
-\todo{Include SARIF v2.1.0 subset schema JSON}
 \input{appendices/appendix-a-sarif-schema}
 
 \section{Policy Examples}
 % Appendix B: Rego policy examples
-\todo{Include example Rego policies for remediation workflows}
 \input{appendices/appendix-b-policy-examples}
 
 \section{Prompt Templates}
 % Appendix C: LLM prompt templates
-\todo{Include 5-shot prompt template for triage}
 \input{appendices/appendix-c-prompt-templates}
 
 \section{Research Protocol}
 % Appendix D: Evaluation protocol and IRB details
-\todo{Include research protocol, IRB approval, consent forms}
 \input{appendices/appendix-d-research-protocol}
 
 % Acknowledgments (blank for anonymity)

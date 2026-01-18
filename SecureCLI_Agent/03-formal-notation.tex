@@ -1,0 +1,194 @@
+% Formal Notation & Constructs for AegisCLI
+% Module 3.1: Formal Notation & Constructs
+% Phase: 3 - Technical Deep Dive & Evaluation Design
+
+% This file defines formal mathematical notation used throughout the paper
+% All symbols are defined here and referenced in later sections
+
+\section{Formal Notation}
+
+We define formal mathematical notation for the AegisCLI system to enable precise specification of components, algorithms, and evaluation metrics. This notation is used consistently throughout Sections 4 (Architecture), 5 (Implementation), and 6 (Evaluation).
+
+\subsection{Core Constructs}
+
+\subsubsection{Finding Tuple}
+
+A security finding is represented as a tuple:
+
+\begin{equation}
+f = (t, r, l, s, c, w)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $t \in \{$\texttt{semgrep}, \texttt{trivy}, \texttt{checkov}, $\ldots\}$ - Scanner tool identifier
+    \item $r \in \text{CWE\_ID} \cup \{\epsilon\}$ - CWE (Common Weakness Enumeration) identifier or empty
+    \item $l = (\text{file}, \text{start\_line}, \text{end\_line}, \text{commit\_hash})$ - Location tuple (file path, line range, git commit)
+    \item $s \in \{\text{CRITICAL}, \text{HIGH}, \text{MEDIUM}, \text{LOW}\}$ - Severity level
+    \item $c = \{\text{code\_snippet}, 5 \text{ lines max}\}$ - Code context (truncated to 5 lines)
+    \item $w \in \{\text{true\_positive}, \text{false\_positive}, \text{uncertain}\}$ - Ground truth label (for evaluation)
+\end{itemize}
+
+\textbf{Example:} $f_1 = (\texttt{semgrep}, \text{CWE-79}, (\texttt{app.py}, 42, 42, \texttt{abc123}), \text{HIGH}, \{\texttt{user\_input = request.args['q']}\}, \text{true\_positive})$
+
+\subsubsection{Policy Function}
+
+A policy function $\pi$ maps findings to policy decisions:
+
+\begin{equation}
+\pi: F \to \{\text{violation}, \text{warning}, \text{exempt}, \text{suppress}\}
+\end{equation}
+
+where $F$ is the set of all findings. The policy function evaluates OPA/Rego policies against finding metadata:
+
+\begin{equation}
+\pi(f) = \begin{cases}
+\text{violation} & \text{if } \text{OPA}(\text{bundle}, f) = \text{deny} \\
+\text{warning} & \text{if } \text{OPA}(\text{bundle}, f) = \text{warn} \\
+\text{exempt} & \text{if } \text{exemptions}[f] \neq \emptyset \\
+\text{suppress} & \text{if } \text{confidence}(f) \geq 0.8 \wedge s(f) = \text{LOW}
+\end{cases}
+\end{equation}
+
+\subsubsection{Triage Function}
+
+A triage function $\tau$ enriches findings with LLM annotations:
+
+\begin{equation}
+\tau: F \times \Pi \to F_{\text{annotated}}
+\end{equation}
+
+where $\Pi$ is the set of policy bundles and $F_{\text{annotated}}$ is the set of findings enriched with confidence scores and explanations:
+
+\begin{equation}
+\tau(f, \pi) = f' = (f, \text{confidence}, \text{explanation}, \text{cwe\_mapping})
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\text{confidence} \in [0, 1]$ - LLM confidence score (from CodeLlama 13B)
+    \item $\text{explanation}$ - LLM-generated explanation for severity classification
+    \item $\text{cwe\_mapping} \in \text{CWE\_ID}$ - CWE mapping suggested by LLM
+\end{itemize}
+
+The triage function is implemented via Ollama inference:
+
+\begin{equation}
+\text{response} = \text{Ollama.Generate}(\text{prompt}(f, \pi), \text{``codellama:13b''}, \text{temperature}=0.2)
+\end{equation}
+
+\subsubsection{MTTR Calculation}
+
+Mean Time To Remediate (MTTR) is calculated as:
+
+\begin{equation}
+\text{MTTR} = \frac{\sum_{i=1}^{n} (\text{remediation\_time}_i - \text{detection\_time}_i)}{n}
+\end{equation}
+
+where $n$ is the number of findings with severity $\geq \text{MEDIUM}$, and:
+
+\begin{itemize}
+    \item $\text{detection\_time}_i$ - Timestamp of first commit introducing finding $f_i$
+    \item $\text{remediation\_time}_i$ - Timestamp of PR merge commit resolving finding $f_i$
+\end{itemize}
+
+\textbf{Unit:} Hours (or days for long-running issues)
+
+\subsection{Auxiliary Functions}
+
+\subsubsection{Severity Normalization}
+
+Normalize scanner-specific severity levels to standard levels:
+
+\begin{equation}
+\text{normalizeSeverity}: \{\text{scanner\_severities}\} \to \{\text{CRITICAL}, \text{HIGH}, \text{MEDIUM}, \text{LOW}\}
+\end{equation}
+
+\subsubsection{Finding Deduplication}
+
+Deduplicate findings by location and rule:
+
+\begin{equation}
+\text{deduplicate}: 2^F \to 2^F, \quad \text{deduplicate}(F) = \{f \in F \mid \nexists f' \in F: \text{hash}(f) = \text{hash}(f') \wedge f' \neq f\}
+\end{equation}
+
+where $\text{hash}(f) = \text{SHA256}(t(f) + r(f) + l(f).\text{file} + l(f).\text{start\_line})$
+
+\subsubsection{Security Debt Calculation}
+
+Calculate security debt as weighted sum of unresolved findings:
+
+\begin{equation}
+\text{Security Debt} = \sum_{f \in F_{\text{unresolved}}} w(s(f)) \cdot \text{count}(f)
+\end{equation}
+
+where $w(s)$ is the severity weight function:
+
+\begin{equation}
+w(s) = \begin{cases}
+4 & \text{if } s = \text{CRITICAL} \\
+3 & \text{if } s = \text{HIGH} \\
+2 & \text{if } s = \text{MEDIUM} \\
+1 & \text{if } s = \text{LOW}
+\end{cases}
+\end{equation}
+
+\textbf{Security Debt Velocity:}
+
+\begin{equation}
+\text{Debt Velocity} = \frac{\text{Debt}(t_{\text{end}}) - \text{Debt}(t_{\text{start}})}{t_{\text{end}} - t_{\text{start}}}
+\end{equation}
+
+\textbf{Unit:} Issues per quarter
+
+\subsubsection{Tool-Switching Overhead}
+
+Calculate tool-switching overhead as:
+
+\begin{equation}
+\text{Overhead} = \frac{\sum \text{tool\_switch\_time} + \text{reconciliation\_time}}{\text{total\_security\_time}}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\text{tool\_switch\_time}$ - Time spent switching between scanners (measured via CI/CD logs)
+    \item $\text{reconciliation\_time}$ - Time spent deduplicating findings across tools (measured via developer surveys)
+    \item $\text{total\_security\_time}$ - Sum of scanning, switching, reconciliation, and triage activities
+\end{itemize}
+
+\textbf{Unit:} Ratio (0-1, percentage)
+
+\subsection{Notation Table}
+
+The following table summarizes all notation symbols used in this paper:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Symbol} & \textbf{Definition} & \textbf{Section} \\
+\midrule
+$f$ & Finding tuple $(t, r, l, s, c, w)$ & Section 4.2 \\
+$F$ & Set of all findings & Section 4.2 \\
+$\pi$ & Policy function: $F \to \{\text{violation}, \text{warning}, \text{exempt}, \text{suppress}\}$ & Section 4.2 \\
+$\tau$ & Triage function: $F \times \Pi \to F_{\text{annotated}}$ & Section 4.2 \\
+\text{MTTR} & Mean Time To Remediate (hours) & Section 3.1 \\
+$w(s)$ & Severity weight function: $\{\text{CRITICAL}, \text{HIGH}, \text{MEDIUM}, \text{LOW}\} \to \{4, 3, 2, 1\}$ & Section 3.1 \\
+$\text{Debt}(t)$ & Security debt at time $t$ (weighted finding count) & Section 6.3 \\
+$\text{Overhead}$ & Tool-switching overhead ratio (0-1) & Section 6.1 \\
+$\kappa$ & Cohen's kappa inter-annotator agreement & Section 6.2 \\
+$n$ & Sample size (findings, teams, repositories) & Section 6 \\
+$\alpha$ & Significance level (typically 0.05) & Section 3.4 \\
+$\beta$ & Type II error rate (1 - power) & Section 3.4 \\
+$d$ & Cohen's $d$ effect size & Section 3.4 \\
+\bottomrule
+\end{tabular}
+\caption{Formal Notation Summary}
+\label{tab:notation}
+\end{table}
+
+\subsection{Notation Consistency}
+
+All notation defined in this section is used consistently throughout Sections 4-6. When introducing new symbols in later sections, they are defined locally with cross-references to this notation table.
+

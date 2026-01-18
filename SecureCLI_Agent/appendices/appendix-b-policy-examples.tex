@@ -3,13 +3,100 @@
 
 This appendix provides example Rego policies for remediation workflows in AegisCLI.
 
-\todo{Include example Rego policies for remediation workflows}
+\subsection{Remediation SLA Policy}
 
-Example policy categories:
-\begin{itemize}
-    \item Remediation SLA policies (critical findings within 48 hours)
-    \item Exemption rules (champion-approved exceptions)
-    \item Prioritization policies (severity-weighted debt tracking)
-    \item Suppression rules (LLM triage confidence thresholds)
-\end{itemize}
+The following Rego policy enforces a 48-hour remediation SLA for critical findings:
+
+\begin{verbatim}
+package aegiscli.policies
+
+default allow = false
+
+# Critical findings must be remediated within 48 hours
+deny[msg] {
+    input.severity == "CRITICAL"
+    input.age_hours > 48
+    msg := "Critical finding exceeds 48-hour SLA; escalate to champion"
+}
+
+# High-severity findings must be remediated within 7 days
+deny[msg] {
+    input.severity == "HIGH"
+    input.age_hours > 168  # 7 days = 168 hours
+    msg := "High-severity finding exceeds 7-day SLA; require remediation"
+}
+\end{verbatim}
+
+\subsection{Exemption Rules}
+
+This policy allows champion-approved exemptions for specific findings:
+
+\begin{verbatim}
+package aegiscli.policies
+
+default allow = false
+
+# Allow exemptions with security-champion approval
+allow {
+    input.exemptions[_] == "champion-approved"
+}
+
+# Allow exemptions for legacy code (pre-AegisCLI deployment)
+allow {
+    input.legacy_code == true
+    input.age_hours < 720  # Legacy exemptions valid for 30 days
+}
+\end{verbatim}
+
+\subsection{Low-Confidence Finding Review}
+
+This policy requires champion review for high-severity findings with low \llm{} triage confidence:
+
+\begin{verbatim}
+package aegiscli.policies
+
+default allow = false
+
+# Low-confidence findings require champion review
+deny[msg] {
+    input.confidence < 0.8
+    input.severity == "HIGH"
+    msg := "High-severity finding with low confidence; require champion review"
+}
+
+# Very low confidence findings require review regardless of severity
+deny[msg] {
+    input.confidence < 0.6
+    input.severity == "CRITICAL"
+    msg := "Critical finding with very low confidence (<0.6); escalate immediately"
+}
+\end{verbatim}
+
+\subsection{Prioritization Policy}
+
+This policy implements severity-weighted prioritization for security debt tracking:
+
+\begin{verbatim}
+package aegiscli.policies
+
+# Calculate priority score (higher = more urgent)
+priority_score = score {
+    severity_weight := {
+        "CRITICAL": 4,
+        "HIGH": 3,
+        "MEDIUM": 2,
+        "LOW": 1
+    }[input.severity]
+    
+    age_weight := input.age_hours / 24  # Days since detection
+    
+    score := severity_weight * (1 + age_weight / 30)  # Boost priority for older findings
+}
+
+# Flag findings exceeding priority threshold
+deny[msg] {
+    priority_score > 5.0
+    msg := sprintf("Finding priority score (%.2f) exceeds threshold; prioritize remediation", [priority_score])
+}
+\end{verbatim}
 

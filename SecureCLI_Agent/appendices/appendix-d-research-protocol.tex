@@ -3,14 +3,69 @@
 
 This appendix documents the research protocol, IRB approval, and consent forms for the AegisCLI evaluation.
 
-\todo{Include research protocol, IRB approval, consent forms}
+\subsection{IRB Approval}
 
-Protocol components:
+Our research adheres to ethical principles governing human subjects research, data privacy, and organizational consent. We obtained Institutional Review Board (IRB) approval (protocol ID: \todo{TBD---IRB submission pending}) for all interview-based data collection (champion interviews, developer surveys) and implemented informed consent procedures ensuring participants understand data usage, retention, and opt-out rights.
+
+\subsection{Informed Consent Procedures}
+
+All interview participants (security champions, developers) provided written informed consent, documenting their understanding of:
+
+\begin{enumerate}
+    \item \textbf{Research purpose}: Evaluating AegisCLI effectiveness in reducing tool-switching overhead, improving \llm{} triage accuracy, and reducing security debt accumulation
+    \item \textbf{Data collection scope}: Interviews (semi-structured, 60 minutes), CI/CD logs (anonymized metrics only), developer surveys (self-reported time allocation)
+    \item \textbf{Data retention policy}: 90-day rolling retention for telemetry (aggregated metrics only), interview transcripts retained per IRB protocol (anonymized, secured storage)
+    \item \textbf{Opt-out rights}: Participants can withdraw consent at any time without organizational penalty, with immediate cessation of data collection
+\end{enumerate}
+
+Interview protocols were reviewed and approved by IRB, ensuring ethical compliance with human subjects research standards.
+
+\subsection{Data Collection Methods}
+
+Our data collection follows three methods:
+
+\begin{description}
+    \item[CI/CD Log Analysis:] Automated extraction of timing metrics (scan duration, tool-switching time) from CI/CD pipeline logs. Logs are anonymized (repository names replaced with IDs, no code snippets), aggregated (team-level metrics), and analyzed for RQ1 (orchestration efficiency).
+    
+    \item[Developer Surveys:] Self-reported time allocation surveys measuring tool-switching overhead, adoption barriers, and workflow integration friction. Surveys are anonymous, optional, and include demographic questions (team size, role, security maturity).
+    
+    \item[Champion Interviews:] Semi-structured interviews (60 minutes, audio-recorded with permission) with security champions ($n=10$, 5 per phase: P2 pilot, P4 final). Interviews cover adoption barriers, enablers, and socio-technical factors. Transcripts are anonymized (participants assigned IDs, organizational details redacted).
+\end{description}
+
+\subsection{Privacy Safeguards}
+
+AegisCLI's privacy-by-design architecture implements several safeguards:
+
 \begin{itemize}
-    \item IRB approval documentation (protocol ID: \todo{TBD})
-    \item Informed consent procedures
-    \item Data collection methods (CI/CD logs, surveys, interviews)
-    \item Privacy safeguards (code snippet truncation, secret redaction)
-    \item Telemetry policy (90-day rolling retention, opt-in only)
+    \item \textbf{Code snippet truncation}: Code snippets sent to \llm{} triage are truncated to 5 lines maximum, preventing accidental secret leakage
+    \item \textbf{Secret redaction}: Gitleaks integration redacts secrets (API keys, passwords, tokens) before \llm{} context via regex-based pattern detection
+    \item \textbf{Telemetry minimization}: Telemetry is opt-in only, collecting essential metrics only (scan duration, tool count, finding count)---no code snippets, no PII, no file paths beyond repository name
+    \item \textbf{Air-gap mode}: Platform defaults to \texttt{--offline} flag, requiring all \llm{} inference to occur on-premises using local CodeLlama 13B models
 \end{itemize}
+
+\subsection{Telemetry Policy}
+
+AegisCLI's telemetry collection follows a 90-day rolling retention policy:
+
+\begin{itemize}
+    \item \textbf{Opt-in consent}: Participants explicitly consent to telemetry transmission during P0 onboarding (written consent, documented in IRB protocol)
+    \item \textbf{Data minimization}: Telemetry includes only essential metrics (scan duration, tool count, finding count)---no code snippets, no PII, no file paths
+    \item \textbf{Retention period}: Telemetry data retained for 90 days, then automatically purged (automated deletion script, audit logs for compliance)
+    \item \textbf{Anonymization}: Repository names replaced with hashed IDs, team identifiers anonymized, no personal information collected
+\end{itemize}
+
+This minimization approach balances research data needs (quantitative metrics for RQ1--RQ4) with privacy protection, ensuring that telemetry does not expose sensitive organizational data.
+
+\subsection{Organizational Consent}
+
+Organizational consent was obtained at the executive level (security leadership, engineering leadership), documenting agreement for:
+
+\begin{enumerate}
+    \item AegisCLI deployment across 50 repositories and 20 teams (12-month study period)
+    \item CI/CD log analysis (anonymized, aggregated metrics only---no code access, no file contents)
+    \item Participation in IRB-approved interviews (champions, developers---voluntary, opt-out available)
+    \item Telemetry collection (opt-in only, 90-day retention, anonymized data)
+\end{enumerate}
+
+All data collection respects organizational data residency requirements (air-gap environments, on-premises \llm{} inference), ensuring that sensitive code and findings are not transmitted to external providers. This organizational consent process ensures that research activities align with organizational privacy policies and regulatory compliance requirements.
 

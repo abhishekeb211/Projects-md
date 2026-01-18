@@ -1,0 +1,55 @@
+% Section 6: Implementation
+% Converted from 4.6-implementation.md
+% Module 5.2: Section Integration & Flow Refinement
+
+\subsection{Implementation Phases}
+
+AegisCLI implementation followed a phased approach (P0--P4) spanning 12 months, integrating engineering development with research activities to generate evaluation data addressing RQ1--RQ5. Each phase produced both functional software artifacts (scanner adapters, \llm{} triage engine, policy engine) and research data (baseline metrics, controlled experiments, qualitative insights), ensuring that implementation and research activities reinforced each other.
+
+\subsubsection{Phase 0: Requirements \& Baseline (Months 1--2)}
+
+\textbf{Engineering Activities.} Phase 0 focused on requirements gathering, baseline data collection, and architecture design. Engineering activities included: (1) scanner integration assessment (evaluating \sarif{} support across Semgrep, Trivy, Checkov), (2) \llm{} deployment planning (Ollama installation, CodeLlama 13B quantization testing), (3) policy engine prototyping (\opa{}/Rego integration, Redis caching evaluation), (4) baseline metrics collection (CI/CD log analysis, developer surveys measuring tool-switching overhead).
+
+\textbf{Research Activities.} Research activities during P0 generated baseline data for RQ1--RQ3: (1) tool-switching overhead measurement (62\% average across 20 teams, validated via CI/CD logs), (2) security debt velocity tracking (baseline accumulation: +12.3 issues/quarter for non-\pac{} teams), (3) gold-standard dataset creation (200 stratified findings, 3 expert annotators, Cohen's $\kappa = 0.92$ inter-annotator agreement for \llm{} triage validation in RQ2).
+
+\textbf{Research Insights.} P0 revealed three critical insights: (1) tool-switching overhead grows non-linearly with tool count (overhead = 40--50\% for 3--4 scanners, 65--75\% for 6--7 scanners), validating the tool sprawl problem and motivating unified orchestration, (2) baseline security debt velocity varies significantly across teams (range: +5 to +18 issues/quarter), indicating that debt management practices are inconsistent and could benefit from policy automation, (3) \sarif{} normalization complexity varies by scanner (Semgrep: straightforward YAML parsing, Trivy: complex JSON vulnerability database mapping, Checkov: Python AST parsing), requiring adapter-specific implementation strategies rather than generic transformation logic.
+
+\subsubsection{Phase 1: Design \& Architecture (Months 3--4)}
+
+\textbf{Engineering Activities.} Phase 1 focused on architecture implementation, formal notation definition, and component design. Engineering activities included: (1) CLI Core development (Go language, cobra CLI framework, workflow orchestration logic), (2) Scanner Adapter interface design (standardized \sarif{} normalization API, error handling patterns), (3) Triage Engine architecture (Ollama integration, prompt template design, confidence scoring logic), (4) Policy Engine integration (\opa{} bundle loading, Redis caching, decision parsing).
+
+\textbf{Research Activities.} Research activities during P1 generated design artifacts: (1) formal notation definition (finding tuple \texttt{f = (t, r, l, s, c, w)}, policy function $\pi(f) \to \{\text{violation}, \text{warning}, \text{exempt}\}$, triage function $\tau(f, \pi) \to f_{\text{annotated}}$), (2) algorithm pseudocode (agentic triage orchestration, policy evaluation, finding deduplication), (3) architecture specification (component interfaces, failure modes, performance budgets).
+
+\textbf{Research Insights.} P1 revealed two critical insights: (1) agentic AI design requires explicit policy boundaries (human-in-the-loop triggers for low confidence, policy violations) to prevent over-automation and preserve human agency, (2) \sarif{} normalization requires custom extensions (confidence scores, policy decision flags, champion review annotations) beyond standard \sarif{} v2.1.0 schema, necessitating backward-compatible extension mechanisms to maintain interoperability.
+
+\subsubsection{Phase 2: Implementation \& Pilot (Months 5--7)}
+
+\textbf{Engineering Activities.} Phase 2 focused on component implementation, pilot deployment, and preliminary validation. Engineering activities included: (1) Scanner Adapter implementation (Semgrep, Trivy, Checkov adapters, \sarif{} normalization logic), (2) Triage Engine implementation (Ollama integration, 5-shot prompt templates, JSON parsing), (3) Policy Engine implementation (\opa{} bundle loading, Rego policy evaluation, Redis caching), (4) Dashboard implementation (PostgreSQL schema, Grafana queries, metrics aggregation).
+
+\textbf{Research Activities.} Research activities during P2 generated preliminary data for RQ4--RQ5: (1) pilot deployment (5 teams, 10 repositories), (2) champion interviews (5 semi-structured interviews, thematic analysis identifying adoption barriers: trust in \llm{} decisions, workflow integration friction, policy configuration complexity), (3) preliminary metrics (orchestration efficiency improvement: 55\% overhead reduction vs. baseline, \llm{} triage accuracy: $\kappa = 0.76$ vs. expert panel).
+
+\textbf{Research Insights.} P2 revealed three critical insights: (1) dependency caching is critical for \llm{} triage performance (Ollama model pre-loading reduces inference latency by 80\%: 2.5s $\to$ 0.5s per finding), (2) champion advocacy accelerates tool adoption (teams with active champions show 40\% faster adoption than teams without champions, validating the champion program hypothesis), (3) policy configuration complexity creates adoption friction (developers report spending 30\% of initial setup time configuring Rego policies), suggesting that policy templates and wizard-style configuration tools could reduce adoption barriers.
+
+\subsubsection{Phase 3: Evaluation \& Expansion (Months 8--10)}
+
+\textbf{Engineering Activities.} Phase 3 focused on scale expansion, performance optimization, and controlled experiments. Engineering activities included: (1) deployment expansion to full scale (20 teams, 50 repositories), (2) performance optimization (Redis caching for policy decisions, batch processing for \llm{} triage, database indexing for dashboard queries), (3) controlled experiments (E1--E4 protocols addressing RQ1--RQ4), (4) qualitative data collection (10 champion interviews, developer surveys, thematic analysis).
+
+\textbf{Research Activities.} Research activities during P3 generated primary research data for all five research questions: (1) E1 (orchestration efficiency): A/B design comparing AegisCLI vs. baseline, overhead reduction: 62\% ($\Delta t$: 8.3 min $\to$ 3.2 min), supporting RQ1, (2) E2 (\llm{} triage accuracy): 200 stratified findings, CodeLlama vs. expert panel, $\kappa = 0.78$ (95\% CI [0.71, 0.84]), supporting RQ2, (3) E3 (\pac{} effectiveness): \pac{}-enabled vs. manual teams, debt velocity reduction: 43\% (+12.3 $\to$ +7.0 issues/quarter), supporting RQ3, (4) E4 (champion impact): champion vs. non-champion teams, \mttr{} improvement: 28\% (92.3h $\to$ 66.4h), supporting RQ4, (5) RQ5 (adoption barriers): thematic analysis of 10 champion interviews, identifying trust, friction, and workflow integration as key themes.
+
+\textbf{Research Insights.} P3 revealed four critical insights: (1) \llm{} triage accuracy improves with context (code snippets + git blame + recent commits achieve $\kappa = 0.78$ vs. $\kappa = 0.72$ with code snippets only), validating the importance of context extraction in triage workflows, (2) policy automation effectiveness depends on team maturity (mature teams with existing policy practices show 50\% debt reduction, while immature teams show 25\% reduction), suggesting that \pac{} benefits are context-dependent, (3) champion effectiveness correlates with technical expertise (champions with security backgrounds show stronger impact than champions with general engineering backgrounds), indicating that champion selection criteria matter, (4) telemetry opt-in rates are high (95\% of teams consent) when privacy controls are transparent and configurable, validating the privacy-by-design approach.
+
+\subsubsection{Phase 4: Reflection \& Knowledge (Months 11--12)}
+
+\textbf{Engineering Activities.} Phase 4 focused on artifact packaging, documentation, and reproducibility preparation. Engineering activities included: (1) artifact packaging (Docker containers, installation scripts, benchmark repositories), (2) documentation (README, API docs, policy examples), (3) reproducibility validation (installation time: $<30$ mins on Ubuntu 22.04, benchmark execution: $<2$ hours), (4) Zenodo deposit preparation (metadata, licenses, DOI reservation).
+
+\textbf{Research Activities.} Research activities during P4 generated knowledge artifacts: (1) findings synthesis (RQ answers, contribution claims, limitation acknowledgments), (2) future work identification (multi-org replication, other \llm{} evaluation, economic analysis), (3) replication package preparation (experiment protocols, data collection scripts, analysis pipelines).
+
+\textbf{Research Insights.} P4 synthesized three critical insights: (1) local-first \llm{} deployment achieves acceptable accuracy ($\kappa = 0.78$) for privacy-sensitive contexts, validating the privacy-performance tradeoff, (2) unified orchestration reduces overhead by 62\%, but benefits vary by team maturity (mature teams benefit more), suggesting that deployment strategies should account for organizational readiness, (3) policy-as-code effectiveness depends on policy quality (well-crafted Rego policies show 50\% debt reduction, while poorly-crafted policies show 15\% reduction), indicating that policy engineering expertise is critical for \pac{} success.
+
+\subsection{Timeline Gantt Chart}
+
+This timeline demonstrates that engineering and research activities overlapped throughout implementation, with each phase generating both functional artifacts and research data. This integration ensures that implementation decisions are informed by research insights (e.g., dependency caching from P2), and research questions are addressed through systematic evaluation (E1--E4 in P3).
+
+% Transition paragraph to Section 7 (Evaluation)
+Having documented the implementation phases and research insights, the next section presents the evaluation setup, including experiment protocols, participant demographics, and statistical analysis methods for addressing RQ1--RQ5.
+
