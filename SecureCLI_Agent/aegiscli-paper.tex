@@ -1,0 +1,96 @@
+% AegisCLI: Privacy-Preserving Agentic Security Remediation via Local LLM Orchestration
+% Main LaTeX document for IEEE TSE submission
+% Module 5.1: LaTeX Template & Structure Setup
+
+\documentclass[compsoc]{IEEEtran}
+
+% Title from Module 1.4
+\title{AegisCLI: Privacy-Preserving Agentic Security Remediation via Local LLM Orchestration}
+
+% Anonymous authors for double-blind review
+\author{Anonymous Authors}
+
+% Override command lockouts for IEEE format
+\IEEEoverridecommandlockouts
+
+% Keywords (to be finalized from J.5)
+\IEEEkeywords{DevSecOps, SARIF, LLM, Policy-as-Code, Security Automation, Privacy-Preserving AI, Local LLM, Scanner Orchestration}
+
+% Load custom macros
+\input{macros}
+
+\begin{document}
+
+% Front matter
+\maketitle
+
+\begin{abstract}
+% Abstract will be added in Module 5.2 during section integration
+\todo{Write abstract (150-200 words) summarizing problem, solution, results, and contributions}
+\end{abstract}
+
+% Body structure - 9 sections using \input for modularity
+\section{Introduction}
+\input{sections/01-introduction}
+
+\section{Background}
+\input{sections/02-background}
+
+\section{Related Work}
+\input{sections/03-related-work}
+
+\section{Design Science Methodology}
+\input{sections/04-methodology}
+
+\section{Architecture}
+\input{sections/05-architecture}
+
+\section{Implementation}
+\input{sections/06-implementation}
+
+\section{Evaluation}
+\input{sections/07-evaluation}
+
+\section{Discussion}
+\input{sections/08-discussion}
+
+\section{Limitations}
+\input{sections/09-limitations}
+
+% Back matter - References
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+% Appendices
+\appendices
+
+\section{SARIF Subset Schema}
+% Appendix A: SARIF subset schema used by AegisCLI
+\todo{Include SARIF v2.1.0 subset schema JSON}
+\input{appendices/appendix-a-sarif-schema}
+
+\section{Policy Examples}
+% Appendix B: Rego policy examples
+\todo{Include example Rego policies for remediation workflows}
+\input{appendices/appendix-b-policy-examples}
+
+\section{Prompt Templates}
+% Appendix C: LLM prompt templates
+\todo{Include 5-shot prompt template for triage}
+\input{appendices/appendix-c-prompt-templates}
+
+\section{Research Protocol}
+% Appendix D: Evaluation protocol and IRB details
+\todo{Include research protocol, IRB approval, consent forms}
+\input{appendices/appendix-d-research-protocol}
+
+% Acknowledgments (blank for anonymity)
+\section*{Acknowledgment}
+The authors would like to acknowledge the contributions of anonymous reviewers and research participants. This research was conducted in compliance with institutional review board guidelines.
+
+% Artifact availability statement
+\section*{Artifact Availability}
+The AegisCLI artifact, including source code, evaluation scripts, and replication materials, is available at \todo{Zenodo DOI}. The artifact includes Docker containers, installation scripts, and benchmark repositories for reproducing all experimental results reported in this paper.
+
+\end{document}
+
