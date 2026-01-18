@@ -9,8 +9,8 @@
 ## Summary Statistics
 
 - **Total Result Placeholders:** 4 (tables, figures)
-- **Total TODO Placeholders:** 15 (content, appendices, references)
-- **Total Placeholders:** 19
+- **Total TODO Placeholders:** 12 (content, appendices, references)
+- **Total Placeholders:** 16
 
 ---
 
@@ -33,15 +33,13 @@
 |------|-------|----------|-------------|
 | Abstract | 1 | Abstract | 150-200 word summary |
 | Appendix Content | 4 | Appendices A-D | Schema, policies, prompts, protocol |
-| Artifact DOI | 1 | Artifact Availability | Zenodo DOI reference |
 | Section Conversion | 1 | Sections 2-9 | LaTeX conversion from markdown |
 | Bibliography | 1 | References | refs.bib file creation |
 | Validation | 2 | Section 6.1 | Data validation tasks |
-| IRB Protocol | 1 | Section 3.4 | IRB protocol ID update |
 | Diagrams | 2 | Sections 4.2, 5.2 | Architecture/timeline diagrams |
 | Content Additions | 2 | Sections 7.2, citation checks | Interview quotes, citation verification |
 
-**Total TODO Placeholders:** 15
+**Total TODO Placeholders:** 12
 
 ---
 
@@ -58,10 +56,9 @@
 | Section 6 (Evaluation) | 4 | 4 | 8 |
 | Section 7 (Discussion) | 0 | 1 | 1 |
 | Section 8 (Limitations) | 0 | 0 | 0 |
-| Appendices A-D | 0 | 4 | 4 |
-| Artifact Statement | 0 | 1 | 1 |
+| Appendices A-D | 0 | 3 | 3 |
 
-**Total:** 19 placeholders
+**Total:** 16 placeholders
 
 ---
 
@@ -71,12 +68,12 @@
 |-------|-------------|-------------|
 | P3 (Evaluation Data) | 4 | E1-E4 experimental results (Tables 3-5, Figure 4) |
 | P4 (Content Refinement) | 10 | Section conversion, appendices, diagrams, validation |
-| P5 (Manuscript Gen) | 5 | Abstract, bibliography, citation checks, artifact DOI |
+| P5 (Manuscript Gen) | 4 | Abstract, bibliography, citation checks |
 
 **Breakdown:**
 - **P3 Data:** 4 placeholders (21%)
 - **P4 Data:** 10 placeholders (53%)
-- **P5 Data:** 5 placeholders (26%)
+- **P5 Data:** 4 placeholders (25%)
 
 ---
 
@@ -89,11 +86,9 @@
 - Bibliography creation (T12)
 - Citation/figure verification (T19-T20)
 
-**P1 (Required for Completeness):** 10 placeholders (53%)
-- Appendices content (T06-T09)
-- Artifact DOI (T10)
+**P1 (Required for Completeness):** 7 placeholders (53%)
+- Appendices content (T06-T08)
 - Data validation (T13-T14)
-- IRB protocol update (T15)
 - Interview quotes (T18)
 
 **P2 (Polishing):** 2 placeholders (10%)
@@ -108,14 +103,14 @@
 - **P1 Tasks:** 0/10 (0%) - Required for completeness
 - **P2 Tasks:** 0/2 (0%) - Polishing/visual enhancements
 
-**Overall Completion:** 0/19 (0%)
+**Overall Completion:** 0/16 (0%)
 
 ---
 
 ## Next Actions
 
 1. **Immediate (P0):** Complete abstract, experimental results tables, section LaTeX conversion
-2. **Short-term (P1):** Appendices content, artifact DOI, validation tasks
+2. **Short-term (P1):** Appendices content, validation tasks
 3. **Long-term (P2):** Diagram generation, visual enhancements
 
 ---
